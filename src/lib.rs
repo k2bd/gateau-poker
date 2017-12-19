@@ -1,6 +1,10 @@
 extern crate rs_poker;
 
-use rs_poker::core::{Deck,Card,FlatDeck,Flattenable,Rankable};
+mod player;
+
+use std::collections::HashMap;
+use rs_poker::core::{Deck,Card,FlatDeck,Flattenable,Rank};
+use player::Player;
 
 #[cfg(test)]
 mod tests {
@@ -12,16 +16,30 @@ mod tests {
 
 pub fn test() {
     let mut deck = create_deck();
-    let my_hand = deal_hole(&mut deck);
-    println!("Hole Cards: {}, {}",my_hand[0],my_hand[1]);
 
-    let your_hand = deal_hole(&mut deck);
-    println!("Hole Cards: {}, {}",your_hand[0],your_hand[1]);
+    let mut players = HashMap::new();
+
+    for i in 0..3 {
+        players.insert(
+            i, 
+            Player{
+                hole_cards : deal_hole(&mut deck),
+                folded : false,
+            } 
+        );
+    }
+
+    for (id, player) in &players {
+        println!("Player {} hole cards: {:?}",id,player.hole_cards);
+    }
 
     let board = deal_community(&mut deck);
     println!("Board: {:?}",board);
 
-    let test_hand = Hand::new_with_cards(my_hand + board);
+    let winners = get_winners(&players, &board);
+    println!("Winning players: {:?}, with {:?}",winners,players.get(&winners[0])
+                                                               .unwrap()
+                                                               .get_rank(&board));
 }
 
 /// Returns a shuffled and dealable deck
@@ -49,10 +67,36 @@ pub fn deal_cards(deck: &mut FlatDeck, num: usize) -> Vec<Card> {
         let tmp_card = deck.deal().unwrap();
         cards.push(Card{
                     value : tmp_card.value,
-                    suit  : tmp_card.suit
+                    suit  : tmp_card.suit,
                 }
         );
     }
 
     return cards;
+}
+
+pub fn get_winners(players: &HashMap<usize,Player>, community: &Vec<Card>) -> Vec<usize> {    
+    let mut best_hands = Vec::<usize>::new();
+
+    let best_rank = players.iter()
+                           .fold(Rank::HighCard(0), |best, (_, player)| {
+                               if !player.folded {
+                                   let new_rank = &player.get_rank(community);
+                                   if new_rank > &best {
+                                       &new_rank
+                                   } else {
+                                       &best
+                                   }
+                               } else {
+                                   best
+                               }
+                           });
+    
+    for (id, player) in players {
+        if player.get_rank(community) == best_rank {
+            best_hands.push(id.clone());
+        }
+    }
+
+    return best_hands;
 }

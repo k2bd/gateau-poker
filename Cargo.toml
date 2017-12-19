@@ -1,0 +1,15 @@
+[package]
+name = "poker-server"
+version = "0.1.0"
+authors = ["Kevin Duff <kevinkelduff@gmail.com>"]
+
+[lib]
+name = "kevpoker_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kevpoker_bin"
+path = "src/main.rs"
+
+[dependencies]
+rs_poker = "0.4.0"

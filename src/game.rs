@@ -44,9 +44,9 @@ impl Game {
 
         self.board = deal_community(&mut self.deck);
 
-        for (_, player) in self.players.iter(){
+        for (_, mut plyr) in self.players.iter(){
             let cards = deal_hole(&mut self.deck);
-            player.give_hand(&cards);
+            plyr.give_hand(&cards);
         }
     } // pub fn deal_hand
 

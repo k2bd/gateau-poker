@@ -1,16 +1,33 @@
 use player::Player;
 use std::collections::HashMap;
-
+use rand::{thread_rng, Rng};
 use rs_poker::core::{Deck, Card, Flattenable, FlatDeck, Rank};
 
 #[derive(Debug)]
+pub enum Street {
+    PreFlop,
+    Flop,
+    Turn,
+    River,
+}
+
+#[derive(Debug)]
 pub struct Game {
-    deck : FlatDeck,
-    pub board : Vec<Card>,
-    pub players : HashMap<usize, Player>,
-    pub starting_stack : usize,
-    pub seat_order : Vec<usize>,
-    pub num_players : usize,
+    // Possible Extensions (unnecessarily advanced)
+    //  - Game consisting of multiple tables w/ appropriate table breaks
+    //  - Optional ante
+    
+    // Public fields
+    pub board : Vec<Card>,                // Community cards
+    pub players : HashMap<usize, Player>, // Players in the game (see player.rs)
+    pub seat_order : Vec<usize>,          // Positions of players around the table
+    pub street : Street,
+
+    // Private Fields
+    deck : FlatDeck,                      // A deck of cards
+    num_players : usize,                  // Player count
+    starting_stack : usize,               // Number of chips we start with, with 1/2 blinds
+    button : usize,                       // Position of the dealer button
 }
 
 impl Game {
@@ -22,6 +39,8 @@ impl Game {
             starting_stack : stack,
             seat_order : Vec::new(),
             num_players : 0,
+            button : 0,
+            street : Street::River,
         }
     } // pub fn new
 
@@ -33,23 +52,48 @@ impl Game {
         );
         self.seat_order.push(id);
         
-        // TODO shuffle seat order
-        //self.seat_order.shuffle();
+        thread_rng().shuffle(&mut self.seat_order);
 
         self.num_players += 1;
     } // pub fn add_player
 
-    pub fn deal_hand(&mut self) -> () {
+    pub fn next_street(&mut self) -> () {
+        match self.street {
+            Street::PreFlop => {
+                println!("Moving to Flop!");
+                // TODO emit a 
+                self.street = Street::Flop;
+            },
+            Street::Flop    => {
+                println!("Moving to Turn!");
+                self.street = Street::Turn;
+            },
+            Street::Turn    => {
+                println!("Moving to River!");
+                self.street = Street::River;
+            },
+            Street::River    => {
+                println!("New Turn!");
+                &self.new_hand();
+                self.street = Street::PreFlop;
+            },
+        }
+    }
+
+    /// Sets up a new hand: shuffles a new deck, deals, etc.
+    pub fn new_hand(&mut self) -> () {
+        // Create a new deck
         self.deck = create_deck();
 
         self.board = deal_community(&mut self.deck);
 
-        for (_, mut plyr) in self.players.iter(){
+        for (_, plyr) in &mut self.players {
             let cards = deal_hole(&mut self.deck);
             plyr.give_hand(&cards);
         }
-    } // pub fn deal_hand
+    } // pub fn new_hand
 
+    /// Of the players still in the hand, return a `Vec<usize>` of the ID(s) of the player(s) with the best hand
     pub fn get_winners(&self) -> Vec<usize> {
         let mut best_hands = Vec::<usize>::new();
 
@@ -77,7 +121,7 @@ impl Game {
     } // pub fn get_winners
 } // impl Game
 
-/// Returns a vec of 2 cards as hole cards
+/// Returns a vec of 2 cards to be used as a player's hole cards
 fn deal_hole(deck: &mut FlatDeck) -> Vec<Card> {
     deal_cards(deck, 2)
 }

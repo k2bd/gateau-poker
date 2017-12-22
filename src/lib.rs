@@ -4,9 +4,6 @@ extern crate rand;
 mod game;
 mod player;
 
-//use std::collections::HashMap;
-//use rs_poker::core::{Deck,Card,FlatDeck,Flattenable,Rank,Hand,Rankable};
-//use player::Player;
 use game::Game;
 
 #[cfg(test)]
@@ -24,7 +21,7 @@ pub fn test() {
     &game.add_player("Bevin");
     &game.add_player("Sevin");
 
-    &game.new_hand();
+    &game.next_street();
 
     let winners = &game.get_winners();
 

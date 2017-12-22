@@ -12,6 +12,7 @@ pub enum Street {
 }
 
 #[derive(Debug)]
+/// Contains the state of the poker game, including players, cards, action, etc.
 pub struct Game {
     // Possible Extensions (unnecessarily advanced)
     //  - Game consisting of multiple tables w/ appropriate table breaks
@@ -21,7 +22,9 @@ pub struct Game {
     pub board : Vec<Card>,                // Community cards
     pub players : HashMap<usize, Player>, // Players in the game (see player.rs)
     pub seat_order : Vec<usize>,          // Positions of players around the table
-    pub street : Street,
+                                          // N.B. 0 us UTG
+    pub street : Street,                  // Street we're currently on
+    pub action : usize,                   // Which player has action
 
     // Private Fields
     deck : FlatDeck,                      // A deck of cards
@@ -41,6 +44,7 @@ impl Game {
             num_players : 0,
             button : 0,
             street : Street::River,
+            action : 0,
         }
     } // pub fn new
 
@@ -58,10 +62,11 @@ impl Game {
     } // pub fn add_player
 
     pub fn next_street(&mut self) -> () {
+        self.action = 0; // Reset action to UTG
+
         match self.street {
             Street::PreFlop => {
                 println!("Moving to Flop!");
-                // TODO emit a 
                 self.street = Street::Flop;
             },
             Street::Flop    => {
@@ -91,9 +96,13 @@ impl Game {
             let cards = deal_hole(&mut self.deck);
             plyr.give_hand(&cards);
         }
+
+        // TODO post blinds from nonfolded players and move action accordingly
+
     } // pub fn new_hand
 
-    /// Of the players still in the hand, return a `Vec<usize>` of the ID(s) of the player(s) with the best hand
+    /// Of the players still in the hand, return a `Vec<usize>` of 
+    /// the ID(s) of the player(s) with the best hand
     pub fn get_winners(&self) -> Vec<usize> {
         let mut best_hands = Vec::<usize>::new();
 

@@ -4,7 +4,7 @@ extern crate rand;
 mod game;
 mod player;
 
-use game::Game;
+use game::{Game,Action};
 
 #[cfg(test)]
 mod tests {
@@ -22,6 +22,8 @@ pub fn test() {
     &game.add_player("Sevin");
 
     &game.next_street();
+
+    &game.player_action(Action::Check);
 
     let winners = &game.get_winners();
 

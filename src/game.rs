@@ -11,6 +11,12 @@ pub enum Street {
     River,
 }
 
+pub enum Action {
+    Fold,
+    Check,
+    Bet(usize),
+}
+
 #[derive(Debug)]
 /// Contains the state of the poker game, including players, cards, action, etc.
 pub struct Game {
@@ -24,7 +30,7 @@ pub struct Game {
     pub seat_order : Vec<usize>,          // Positions of players around the table
                                           // N.B. 0 us UTG
     pub street : Street,                  // Street we're currently on
-    pub action : usize,                   // Which player has action
+    pub to_act : usize,                   // Which player has action
 
     // Private Fields
     deck : FlatDeck,                      // A deck of cards
@@ -44,7 +50,7 @@ impl Game {
             num_players : 0,
             button : 0,
             street : Street::River,
-            action : 0,
+            to_act : 0,
         }
     } // pub fn new
 
@@ -81,6 +87,24 @@ impl Game {
                 println!("New Turn!");
                 &self.new_hand();
                 self.street = Street::PreFlop;
+            },
+        }
+    }
+
+    pub fn player_action(&mut self, action: Action) -> {
+        // TODO verify the correct player posted action
+
+        let player = &game.players.get(&game.to_act).unwrap();
+
+        match action {
+            Action::Check => {
+                println!("Player {} checks",player.display_name);
+            },
+            Action::Fold => {
+                println!("Player {} folds",player.display_name);
+            },
+            Action::Bet(e) => {
+                println!("Player {} bets {}",player.display_name, e);
             },
         }
     }

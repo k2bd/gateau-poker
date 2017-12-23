@@ -8,6 +8,7 @@ pub struct Player {
     pub folded : bool,
     pub chips : usize,
     pub display_name : String,
+    pub pot_contrib : usize,
 }
 
 impl Player {

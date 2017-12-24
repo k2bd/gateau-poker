@@ -2,6 +2,7 @@ use player::Player;
 use std::collections::HashMap;
 use rand::{thread_rng, Rng};
 use rs_poker::core::{Deck, Card, Flattenable, FlatDeck, Rank};
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum Street {
@@ -20,6 +21,8 @@ pub enum Action {
 #[derive(Debug)]
 /// Contains the state of the poker game, including players, cards, action, etc.
 pub struct Game {
+    // TODO:
+    //  - Push game moves to a database
     // Possible Extensions (unnecessarily advanced)
     //  - Game consisting of multiple tables w/ appropriate table breaks
     //  - Optional ante
@@ -28,15 +31,25 @@ pub struct Game {
     pub board : Vec<Card>,                // Community cards
     pub players : HashMap<usize, Player>, // Players in the game (see player.rs)
     pub seat_order : Vec<usize>,          // Positions of players around the table
-                                          // N.B. 0 us UTG
+                                          // N.B. seat_order[0] is button
     pub street : Street,                  // Street we're currently on
     pub to_act : usize,                   // Which player has action
 
+    game_id : Uuid, // TODO: use this
+
     // Private Fields
     deck : FlatDeck,                      // A deck of cards
+
     num_players : usize,                  // Player count
+    num_in_play : usize,                  // Number of players able to act (not folded or all-in)
+    num_folded  : usize,                  // Number of players who have folded
+    num_eliminated : usize,               // Number of players who have gone to 0 chips
+
     starting_stack : usize,               // Number of chips we start with, with 1/2 blinds
     button : usize,                       // Position of the dealer button
+
+    current_bet : usize,
+    min_raise   : usize,
 }
 
 impl Game {
@@ -48,9 +61,15 @@ impl Game {
             starting_stack : stack,
             seat_order : Vec::new(),
             num_players : 0,
+            num_in_play : 0,
+            num_folded : 0,
+            num_eliminated : 0,
             button : 0,
             street : Street::River,
             to_act : 0,
+            game_id : Uuid::new_v4(),
+            current_bet : 0,
+            min_raise : 2,
         }
     } // pub fn new
 
@@ -67,44 +86,109 @@ impl Game {
         self.num_players += 1;
     } // pub fn add_player
 
+    /// Takes a player action and applies it to the game
+    pub fn player_action(&mut self, recv_action: Action) -> () {
+        // TODO: 
+        // Verify the correct player posted action
+        // Verify the action is valid in context
+        // And actually take the action...
+
+        let real_action;
+
+        { // For mutable borrow of self through plyr
+            let plyr = self.players.get_mut(&self.to_act).unwrap();
+            // Interpret the recieved action into a legal action
+            match recv_action {
+                Action::Check => {
+                    if self.current_bet > plyr.street_contrib {
+                        // Player didn't contribute enough for a check to be valid
+                        real_action = Action::Fold;
+                    } else {
+                        real_action = Action::Check;
+                    }
+                },
+                Action::Fold => {
+                    // We can always fold
+                    real_action = Action::Fold;
+                },
+                Action::Bet(bet) => {
+                    if bet + plyr.street_contrib == self.current_bet {
+                        // This is a call
+                        real_action = Action::Bet(plyr.chips.min(bet));
+                    } else if bet + plyr.street_contrib < self.current_bet {
+                        // Sub-call is a call or all-in
+                        real_action = Action::Bet(plyr.chips.min(self.current_bet 
+                                                                 - plyr.street_contrib))
+                    } else {
+                        // Player is trying to raise
+                        if bet + plyr.street_contrib - self.current_bet < self.min_raise {
+                            // Under-raise is a min-raise or all-in
+                            real_action = Action::Bet(plyr.chips.min(self.current_bet 
+                                                      + self.min_raise - plyr.street_contrib));
+                        } else {
+                            // Valid raise. Use it or all-in
+                            real_action = Action::Bet(plyr.chips.min(bet))
+                        }
+                    }
+                },
+            }
+
+            match real_action {
+                Action::Check => {
+                    println!("GAME - Player {} checks",plyr.display_name);
+                },
+                Action::Fold => {
+                    plyr.folded = true;
+                    self.num_in_play -= 1;
+                    self.num_folded += 1;
+                    println!("GAME - Player {} folds",plyr.display_name);
+                },
+                Action::Bet(bet) => {
+                    plyr.street_contrib += bet;
+                    plyr.hand_contrib += bet;
+                    plyr.chips -= bet;
+                    println!("GAME - Player {} bets {}",plyr.display_name, bet);
+                },
+            }
+
+            if plyr.chips == 0 {
+                plyr.all_in = true;
+                self.num_in_play -= 1;
+                println!("GAME - Player {} has gone all-in!",plyr.display_name);
+            }
+        } // End of mutable borrow block
+
+        // Now see if the hand is over
+
+        // TODO: check hand is over and go to victory checker & chip redistributer
+        // If not done, get ready for the next player's action
+        self.to_act = self.next_player(self.to_act);
+    }
+
     pub fn next_street(&mut self) -> () {
-        self.action = 0; // Reset action to UTG
+        // TODO: Post stuff to web
+        self.to_act = self.next_player(self.seat_order[0]);
+        println!("GAME - To act: {}:{}",self.to_act,self.players.get(&self.to_act).unwrap().display_name);
 
         match self.street {
             Street::PreFlop => {
-                println!("Moving to Flop!");
+                println!("GAME - Dealing Flop");
+                println!("GAME - Flop: {:?}",&self.board[0..3]);
                 self.street = Street::Flop;
             },
             Street::Flop    => {
-                println!("Moving to Turn!");
+                println!("GAME - Dealing turn");
+                println!("GAME - Turn: {:?}",&self.board[3]);
                 self.street = Street::Turn;
             },
             Street::Turn    => {
-                println!("Moving to River!");
+                println!("GAME - Dealing River");
+                println!("GAME - Turn: {:?}",&self.board[4]);
                 self.street = Street::River;
             },
             Street::River    => {
-                println!("New Turn!");
+                println!("GAME - New Hand!");
                 &self.new_hand();
-                self.street = Street::PreFlop;
-            },
-        }
-    }
-
-    pub fn player_action(&mut self, action: Action) -> {
-        // TODO verify the correct player posted action
-
-        let player = &game.players.get(&game.to_act).unwrap();
-
-        match action {
-            Action::Check => {
-                println!("Player {} checks",player.display_name);
-            },
-            Action::Fold => {
-                println!("Player {} folds",player.display_name);
-            },
-            Action::Bet(e) => {
-                println!("Player {} bets {}",player.display_name, e);
             },
         }
     }
@@ -121,9 +205,48 @@ impl Game {
             plyr.give_hand(&cards);
         }
 
-        // TODO post blinds from nonfolded players and move action accordingly
+        self.num_in_play = self.num_players - self.num_eliminated;
+        self.num_folded = 0;
+
+        self.street = Street::PreFlop;
+
+        // TODO: post blinds from nonfolded players and move action accordingly
 
     } // pub fn new_hand
+
+    pub fn start(&mut self) -> () {
+        println!("GAME - Starting");
+        self.next_street();
+    }
+
+    /// Return the index of the next unfolded player in the move order
+    pub fn next_player(&self, current_player: usize) -> usize {
+        let mut found_current = false;
+        
+        for &i in &self.seat_order {
+            if i == current_player {
+                found_current = true;
+            } else if found_current {
+                let plyr = self.players.get(&i).unwrap();
+                if !plyr.folded && !plyr.all_in && !plyr.eliminated {
+                    return i;
+                }
+            }
+        }
+
+        // We got to the end and didn't find anyone... So return the first unfolded player
+        for &i in &self.seat_order {
+            if i == current_player {
+                panic!("Only one unfolded player!");
+            } else {
+                if !self.players.get(&i).unwrap().folded {
+                    return i;
+                }
+            }
+        }
+
+        panic!("Something wrong in Game::next_player");
+    }
 
     /// Of the players still in the hand, return a `Vec<usize>` of 
     /// the ID(s) of the player(s) with the best hand

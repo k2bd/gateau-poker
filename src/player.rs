@@ -8,7 +8,11 @@ pub struct Player {
     pub folded : bool,
     pub chips : usize,
     pub display_name : String,
-    pub pot_contrib : usize,
+    pub street_contrib : usize,
+    pub hand_contrib : usize,
+    pub has_option : bool,
+    pub all_in : bool,
+    pub eliminated : bool,
 }
 
 impl Player {
@@ -18,6 +22,11 @@ impl Player {
             display_name : name,
             hole_cards : Vec::new(),
             folded : false,
+            hand_contrib : 0,
+            street_contrib : 0,
+            has_option : false,
+            all_in : false,
+            eliminated : false,
         }
     }
 

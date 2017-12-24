@@ -16,6 +16,7 @@ pub enum Action {
     Fold,
     Check,
     Bet(usize),
+    PostBlind(usize),
 }
 
 #[derive(Debug)]
@@ -112,7 +113,14 @@ impl Game {
                     real_action = Action::Fold;
                 },
                 Action::Bet(bet) => {
-                    if bet + plyr.street_contrib == self.current_bet {
+                    if bet == 0 {
+                        if self.current_bet == 0 || (plyr.has_option 
+                                                     && self.current_bet == plyr.street_contrib) {
+                            real_action = Action::Check;
+                        } else {
+                            real_action = Action::Fold;
+                        }
+                    } else if bet + plyr.street_contrib == self.current_bet {
                         // This is a call
                         real_action = Action::Bet(plyr.chips.min(bet));
                     } else if bet + plyr.street_contrib < self.current_bet {
@@ -131,6 +139,10 @@ impl Game {
                         }
                     }
                 },
+                Action::PostBlind(blind) => {
+                    // Post as much of the blind as possible
+                    real_action = Action::PostBlind(plyr.chips.min(blind))
+                },
             }
 
             match real_action {
@@ -148,6 +160,12 @@ impl Game {
                     plyr.hand_contrib += bet;
                     plyr.chips -= bet;
                     println!("GAME - Player {} bets {}",plyr.display_name, bet);
+                },
+                Action::PostBlind(blind) => {
+                    plyr.street_contrib += blind;
+                    plyr.hand_contrib += blind;
+                    plyr.chips -= blind;
+                    println!("GAME - Player {} posts blind {}",plyr.display_name, blind);
                 },
             }
 
@@ -210,7 +228,8 @@ impl Game {
 
         self.street = Street::PreFlop;
 
-        // TODO: post blinds from nonfolded players and move action accordingly
+        self.player_action(Action::PostBlind(1));
+        self.player_action(Action::PostBlind(2));
 
     } // pub fn new_hand
 
@@ -250,22 +269,23 @@ impl Game {
 
     /// Of the players still in the hand, return a `Vec<usize>` of 
     /// the ID(s) of the player(s) with the best hand
-    pub fn get_winners(&self) -> Vec<usize> {
+    pub fn get_winners(&self, ids: Vec<usize>) -> Vec<usize> {
         let mut best_hands = Vec::<usize>::new();
 
-        let best_rank = self.players.iter()
-                                    .fold(Rank::HighCard(0), |best, (_, player)| {
-                                        if !player.folded {
-                                            let new_rank = (&player).get_rank(&self.board);
-                                            if new_rank > best {
-                                                new_rank.to_owned()
-                                            } else {
-                                                best
-                                            }
-                                        } else {
-                                            best
-                                        }
-                                    });
+        let best_rank = ids.iter()
+                           .fold(Rank::HighCard(0), |best, id| {
+                                let player = self.players.get(&id).unwrap();
+                                if !player.folded {
+                                    let new_rank = (&player).get_rank(&self.board);
+                                    if new_rank > best {
+                                        new_rank.to_owned()
+                                    } else {
+                                        best
+                                    }
+                                } else {
+                                    best
+                                }
+                           });
 
         for (id, player) in self.players.iter() {
             if player.get_rank(&self.board) == best_rank {

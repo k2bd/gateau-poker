@@ -38,7 +38,7 @@ pub fn test() {
 
     &game.next_street();
 
-    let winners = &game.get_winners();
+    let winners = &game.get_winners(game.seat_order.clone());
     let winning_players = winners.iter()
                                  .map(|id| &game.players.get(&id).unwrap().display_name)
                                  .collect::<Vec<_>>();

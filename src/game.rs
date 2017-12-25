@@ -285,6 +285,44 @@ impl Game {
     fn end_hand(&mut self) -> () {
         // Figure out winners, sidepots, etc
         // Eliminate players
+        for (_, player) in &mut self.players {
+            player.hand_contrib += player.street_contrib;
+            player.street_contrib = 0;
+        }
+
+        let mut current_pot = 1;
+
+        while current_pot > 0 {
+            current_pot = self.players.iter()
+                                      .map(|(_, player)| {
+                                          if player.folded {
+                                              usize::max_value()
+                                          } else {
+                                              player.hand_contrib
+                                          }
+                                      })
+                                      .min();
+            
+            let mut payout = 0;
+            let mut in_pot = Vec::new();
+            for (id, player) in &mut self.players {
+                if !player.folded && player.hand_contrib > 0 {
+                    in_pot.push(id.clone());
+                }
+
+                let contrib = current_pot.min(player.hand_contrib);
+                payout += contrib;
+                player.hand_contrib -= contrib;
+            }
+
+            let winners = self.get_winners(&in_pot);
+
+            // Split payout between winners
+            let indiv_payout = payout / winners.len();
+
+            //TODO: I'm here
+            // Pay each player their payout and then give change to the left of the button
+        }
 
         self.new_hand();
     }

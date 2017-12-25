@@ -35,11 +35,11 @@ pub fn test() {
     &game.player_action(Action::Bet(2));
     &game.player_action(Action::Bet(1));
     &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Bet(3));
-    &game.player_action(Action::Bet(3));
-    &game.player_action(Action::Bet(3));
-    &game.player_action(Action::Bet(3));
-    &game.player_action(Action::Bet(3));
+    &game.player_action(Action::Bet(5));
+    &game.player_action(Action::Bet(5));
+    &game.player_action(Action::Bet(5));
+    &game.player_action(Action::Bet(5));
+    &game.player_action(Action::Bet(5));
     &game.player_action(Action::Fold);
     &game.player_action(Action::Fold);
     &game.player_action(Action::Fold);

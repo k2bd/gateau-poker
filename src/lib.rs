@@ -31,10 +31,10 @@ pub fn test() {
                                                 .collect::<Vec<_>>());
 
     &game.player_action(Action::Bet(90));
-    &game.player_action(Action::Bet(90));
+    &game.player_action(Action::Call);
     &game.player_action(Action::Fold);
-    &game.player_action(Action::Bet(89));
-    &game.player_action(Action::Bet(88));
+    &game.player_action(Action::Call);
+    &game.player_action(Action::Call);
 
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);

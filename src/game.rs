@@ -13,14 +13,13 @@ pub enum Street {
     River,
 }
 
-// TODO:
-// - Call
-// - All In
 pub enum Action {
     Fold,
     Check,
     Bet(usize),
     PostBlind(usize),
+    Call,
+    AllIn,
 }
 
 #[derive(Debug)]
@@ -115,6 +114,19 @@ impl Game {
                     // We can always fold
                     real_action = Action::Fold;
                 },
+                Action::Call => {
+                    if self.current_bet == plyr.street_contrib {
+                        // If we can just check this is a check!
+                        real_action = Action::Check;
+                    } else {
+                        // Try to call, up to an all-in
+                        real_action = Action::Bet(plyr.chips.min(self.current_bet
+                                                                - plyr.street_contrib));
+                    }
+                },
+                Action::AllIn => {
+                    real_action = Action::Bet(plyr.chips);
+                }
                 Action::Bet(bet) => {
                     if bet == 0 {
                         if self.current_bet == 0 || (plyr.has_option 
@@ -165,7 +177,8 @@ impl Game {
                 Action::Bet(bet) => {
                     if bet + plyr.street_contrib == self.current_bet {
                         println!("GAME - Player {} calls {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
-                    } else if self.current_bet == 0 {
+                    } else if self.current_bet == 0 || (self.street == Street::PreFlop && self.current_bet == 2) {
+                        // TODO: Change = 2 to a big blind varaible
                         println!("GAME - Player {} bets {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
                     } else {
                         println!("GAME - Player {} raises {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
@@ -177,7 +190,6 @@ impl Game {
                     }
 
                     self.current_bet = bet + plyr.street_contrib;
-                    println!("DEBUG - Current bet is {}",self.current_bet);
 
                     plyr.street_contrib += bet;
                     plyr.chips -= bet;
@@ -192,6 +204,9 @@ impl Game {
                     }
                     println!("GAME - Player {} posts blind {}",plyr.display_name, blind);
                 },
+                _ => {
+                    panic!("Invalid action got here");
+                }
             }
 
             if plyr.chips == 0 {
@@ -235,13 +250,11 @@ impl Game {
     fn is_street_over(&self) -> bool {
         // If anyone has option we can't end the street
         if self.players.iter().any(|(_, player)| !player.folded && player.has_option) {
-            println!("DEBUG - Someone still has option");
             return false;
         }
 
         // Otherwise, if everyone's put in the same amount we're done
         if self.players.iter().any(|(_,player)| !player.folded && player.street_contrib != self.current_bet){
-            println!("Someone hasn't matched the bet!");
             return false;
         } else {
             println!("DEBUG - STREET OVER");

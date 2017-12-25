@@ -247,6 +247,7 @@ impl Game {
 
     fn next_street(&mut self) -> () {
         self.to_act = self.next_player(self.seat_order[0]);
+        //self.players.get(&self.to_act).unwrap().has_option = true;
 
         for (_, player) in &mut self.players {
             if !player.eliminated {
@@ -261,24 +262,41 @@ impl Game {
 
         match self.street {
             Street::PreFlop => {
-                println!("GAME - Dealing Flop");
-                println!("GAME - Flop: {:?}",&self.board[0..3]);
                 self.street = Street::Flop;
+                self.deal_street();
             },
             Street::Flop    => {
-                println!("GAME - Dealing turn");
-                println!("GAME - Turn: {:?}",&self.board[3]);
                 self.street = Street::Turn;
+                self.deal_street();
             },
             Street::Turn    => {
-                println!("GAME - Dealing River");
-                println!("GAME - Turn: {:?}",&self.board[4]);
                 self.street = Street::River;
+                self.deal_street();
             },
             Street::River    => {
                 println!("GAME - New Hand!");
                 &self.new_hand();
             },
+        }
+    }
+
+    fn deal_street(&mut self) {
+        let plyr = self.players.get_mut(&self.seat_order[0]).unwrap();
+        plyr.has_option = true;
+
+        match self.street {
+            Street::Flop => {
+                println!("GAME - Flop: {:?}",&self.board[0..3]);
+            },
+            Street::Turn => {
+                println!("GAME - Turn: {:?}",&self.board[3]);
+            },
+            Street::River => {
+                println!("GAME - River: {:?}",&self.board[4]);
+            }
+            _ => {
+                panic!("Invalid street!");
+            }
         }
     }
 
@@ -290,19 +308,23 @@ impl Game {
             player.street_contrib = 0;
         }
 
-        let mut current_pot = 1;
+        let mut to_pay = Vec::new();
+
+        for _ in 0..self.num_players {
+            to_pay.push(0);
+        }
+
+        let mut current_pot = self.players.iter()
+                                          .map(|(_, player)| {
+                                            if player.folded {
+                                                usize::max_value()
+                                            } else {
+                                                player.hand_contrib
+                                            }
+                                          })
+                                          .min().unwrap();
 
         while current_pot > 0 {
-            current_pot = self.players.iter()
-                                      .map(|(_, player)| {
-                                          if player.folded {
-                                              usize::max_value()
-                                          } else {
-                                              player.hand_contrib
-                                          }
-                                      })
-                                      .min();
-            
             let mut payout = 0;
             let mut in_pot = Vec::new();
             for (id, player) in &mut self.players {
@@ -315,13 +337,46 @@ impl Game {
                 player.hand_contrib -= contrib;
             }
 
-            let winners = self.get_winners(&in_pot);
+            let winners = self.get_winners(in_pot);
+
+            println!("DEBUG - WINNERS: {:?}",winners);
 
             // Split payout between winners
             let indiv_payout = payout / winners.len();
 
-            //TODO: I'm here
-            // Pay each player their payout and then give change to the left of the button
+            for id in &winners {
+                to_pay[*id] += indiv_payout;
+            }
+
+            let mut paid_out = indiv_payout * winners.len();
+
+            // Any leftover change goes to the left of the button
+            let mut change_target = 1;
+            while paid_out < payout {
+                if winners.iter().any(|&id| id == self.seat_order[change_target]) {
+                    to_pay[self.seat_order[change_target]] += 1;
+                    paid_out += 1;
+                }
+                change_target += 1;
+            }
+
+            current_pot = self.players.iter()
+                                      .map(|(_, player)| {
+                                        if player.folded {
+                                            usize::max_value()
+                                        } else {
+                                            player.hand_contrib
+                                        }
+                                      })
+                                      .min().unwrap();
+        }
+
+        // Print summary of payouts
+        println!("BOARD - {:?}",self.board);
+        println!("HAND PAYOUTS");
+        for (&id, player) in &mut self.players {
+            println!("{}:{} - {} for {:?} ({:?})",id, player.display_name, to_pay[id], player.hole_cards, player.get_rank(&self.board));
+            player.chips += to_pay[id];
         }
 
         self.new_hand();
@@ -343,8 +398,11 @@ impl Game {
             plyr.give_hand(&cards);
         }
 
-        // Reset some player stuff
-        for (_, player) in &mut self.players {
+        // Reset some player stuff and print chip counts
+        println!("CHIP COUNTS");
+        for (id, player) in &mut self.players {
+            println!("{}:{} - {}", id, player.display_name, player.chips);
+
             if !player.eliminated {
                 player.folded = false;
             }

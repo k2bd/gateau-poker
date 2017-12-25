@@ -39,15 +39,26 @@ pub fn test() {
     &game.player_action(Action::Bet(5));
     &game.player_action(Action::Bet(5));
     &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Fold);
-    &game.player_action(Action::Fold);
-    &game.player_action(Action::Fold);
-    &game.player_action(Action::Fold);
 
     println!("Play Order: {:?}",&game.seat_order.iter()
                                                 .map(|id| &game.players.get(&id).unwrap().display_name)
                                                 .collect::<Vec<_>>());
 
-    &game.player_action(Action::Bet(18));
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
 }

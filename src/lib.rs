@@ -30,30 +30,29 @@ pub fn test() {
                                                 .map(|id| &game.players.get(&id).unwrap().display_name)
                                                 .collect::<Vec<_>>());
 
-    &game.player_action(Action::Bet(2));
-    &game.player_action(Action::Bet(2));
-    &game.player_action(Action::Bet(2));
-    &game.player_action(Action::Bet(1));
-    &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Bet(5));
-    &game.player_action(Action::Bet(5));
-
-    println!("Play Order: {:?}",&game.seat_order.iter()
-                                                .map(|id| &game.players.get(&id).unwrap().display_name)
-                                                .collect::<Vec<_>>());
+    &game.player_action(Action::Bet(90));
+    &game.player_action(Action::Bet(90));
+    &game.player_action(Action::Fold);
+    &game.player_action(Action::Bet(89));
+    &game.player_action(Action::Bet(88));
 
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
+    //&game.player_action(Action::Check);
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);
 
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);
+    //&game.player_action(Action::Check);
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);
+
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    //&game.player_action(Action::Check);
+    &game.player_action(Action::Check);
+    &game.player_action(Action::Fold);
     &game.player_action(Action::Check);
 
     &game.player_action(Action::Check);

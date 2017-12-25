@@ -58,6 +58,7 @@ pub struct Game {
 }
 
 impl Game {
+    // Returns a new game object
     pub fn new(stack : usize) -> Game {
         Game{
             deck : create_deck(),
@@ -78,6 +79,7 @@ impl Game {
         }
     } // pub fn new
 
+    // Add a player to the game. Things like ID, starting stack, etc are handled automatically. 
     pub fn add_player(&mut self, name : &str) -> () {
         let id = self.num_players;
         self.players.insert(
@@ -232,12 +234,14 @@ impl Game {
 
     fn is_street_over(&self) -> bool {
         // If anyone has option we can't end the street
-        if self.players.iter().any(|(_, player)| player.has_option) {
+        if self.players.iter().any(|(_, player)| !player.folded && player.has_option) {
+            println!("DEBUG - Someone still has option");
             return false;
         }
 
         // Otherwise, if everyone's put in the same amount we're done
-        if self.players.iter().any(|(_,player)| player.street_contrib != self.current_bet){
+        if self.players.iter().any(|(_,player)| !player.folded && player.street_contrib != self.current_bet){
+            println!("Someone hasn't matched the bet!");
             return false;
         } else {
             println!("DEBUG - STREET OVER");
@@ -281,9 +285,11 @@ impl Game {
     }
 
     fn deal_street(&mut self) {
-        let plyr = self.players.get_mut(&self.seat_order[0]).unwrap();
-        plyr.has_option = true;
+        // Give option to the player that will act LAST!
+        let option_player = self.prev_player(self.next_player(self.seat_order[0]));
+        self.players.get_mut(&option_player).unwrap().has_option = true;
 
+        // Deal the cards for the street
         match self.street {
             Street::Flop => {
                 println!("GAME - Flop: {:?}",&self.board[0..3]);
@@ -375,7 +381,11 @@ impl Game {
         println!("BOARD - {:?}",self.board);
         println!("HAND PAYOUTS");
         for (&id, player) in &mut self.players {
-            println!("{}:{} - {} for {:?} ({:?})",id, player.display_name, to_pay[id], player.hole_cards, player.get_rank(&self.board));
+            if player.folded {
+                println!("{}:{} folded",id, player.display_name);
+            } else {
+                println!("{}:{} - {} for {:?} ({:?})",id, player.display_name, to_pay[id], player.hole_cards, player.get_rank(&self.board));
+            }
             player.chips += to_pay[id];
         }
 
@@ -448,7 +458,41 @@ impl Game {
             if i == current_player {
                 panic!("Only one unfolded player!");
             } else {
-                if !self.players.get(&i).unwrap().folded {
+                let plyr = self.players.get(&i).unwrap();
+                if !plyr.folded && !plyr.all_in && !plyr.eliminated {
+                    return i;
+                }
+            }
+        }
+
+        panic!("Something wrong in Game::next_player");
+    }
+
+        /// Return the index of the next unfolded player in the move order
+    fn prev_player(&self, current_player: usize) -> usize {
+        let mut found_current = false;
+
+        let mut reverse_seat = self.seat_order.clone();
+        reverse_seat.reverse();
+        
+        for &i in &reverse_seat {
+            if i == current_player {
+                found_current = true;
+            } else if found_current {
+                let plyr = self.players.get(&i).unwrap();
+                if !plyr.folded && !plyr.all_in && !plyr.eliminated {
+                    return i;
+                }
+            }
+        }
+
+        // We got to the end and didn't find anyone... So return the first unfolded player
+        for &i in &reverse_seat {
+            if i == current_player {
+                panic!("Only one unfolded player!");
+            } else {
+                let plyr = self.players.get(&i).unwrap();
+                if !plyr.folded && !plyr.all_in && !plyr.eliminated {
                     return i;
                 }
             }

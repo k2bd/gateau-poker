@@ -30,38 +30,7 @@ pub fn test() {
                                                 .map(|id| &game.players.get(&id).unwrap().display_name)
                                                 .collect::<Vec<_>>());
 
-    &game.player_action(Action::Bet(90));
-    &game.player_action(Action::Call);
-    &game.player_action(Action::Fold);
-    &game.player_action(Action::Call);
-    &game.player_action(Action::Call);
-
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    //&game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    //&game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    //&game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Fold);
-    &game.player_action(Action::Check);
-
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    
-    &game.player_action(Action::AllIn);
-    &game.player_action(Action::AllIn);
-    &game.player_action(Action::AllIn);
-    &game.player_action(Action::AllIn);
-    &game.player_action(Action::AllIn);
+    while !&game.game_over {
+        &game.player_action(Action::Call);
+    }
 }

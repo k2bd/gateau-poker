@@ -39,6 +39,8 @@ pub struct Game {
     pub street : Street,                  // Street we're currently on
     pub to_act : usize,                   // Which player has action
 
+    pub game_over : bool,
+
     game_id : Uuid, // TODO: use this
 
     // Private Fields
@@ -65,6 +67,7 @@ impl Game {
             players : HashMap::new(),
             starting_stack : stack,
             seat_order : Vec::new(),
+            game_over : false,
             num_players : 0,
             num_in_play : 0,
             num_folded : 0,
@@ -189,7 +192,7 @@ impl Game {
                         println!("DEBUG - Increasing minimum raise to {}",self.min_raise);
                     }
 
-                    self.current_bet = bet + plyr.street_contrib;
+                    self.current_bet = self.current_bet.max(bet + plyr.street_contrib);
 
                     plyr.street_contrib += bet;
                     plyr.chips -= bet;
@@ -198,10 +201,6 @@ impl Game {
                 Action::PostBlind(blind) => {
                     plyr.street_contrib += blind;
                     plyr.chips -= blind;
-                    if blind == 2 {
-                        // TODO: swap 2 for a big_blind value
-                        plyr.has_option = true;
-                    }
                     println!("GAME - Player {} posts blind {}",plyr.display_name, blind);
                 },
                 _ => {
@@ -249,12 +248,12 @@ impl Game {
 
     fn is_street_over(&self) -> bool {
         // If anyone has option we can't end the street
-        if self.players.iter().any(|(_, player)| !player.folded && player.has_option) {
+        if self.players.iter().any(|(_, player)| !player.all_in && !player.folded && !player.eliminated && player.has_option) {
             return false;
         }
 
         // Otherwise, if everyone's put in the same amount we're done
-        if self.players.iter().any(|(_,player)| !player.folded && player.street_contrib != self.current_bet){
+        if self.players.iter().any(|(_,player)| !player.folded && player.street_contrib != self.current_bet && !player.all_in){
             return false;
         } else {
             println!("DEBUG - STREET OVER");
@@ -347,7 +346,7 @@ impl Game {
             let mut payout = 0;
             let mut in_pot = Vec::new();
             for (id, player) in &mut self.players {
-                if !player.folded && player.hand_contrib > 0 {
+                if !player.folded && !player.eliminated && player.hand_contrib > 0 {
                     in_pot.push(id.clone());
                 }
 
@@ -355,6 +354,7 @@ impl Game {
                 payout += contrib;
                 player.hand_contrib -= contrib;
             }
+            println!("DEBUG - players in pot {:?}",in_pot);
 
             let winners = self.get_winners(in_pot);
 
@@ -384,7 +384,7 @@ impl Game {
             } else {
                 current_pot = self.players.iter()
                                           .map(|(_, player)| {
-                                            if player.folded || player.hand_contrib == 0 {
+                                            if player.folded || player.eliminated || player.hand_contrib == 0 {
                                                 usize::max_value()
                                             } else {
                                                 player.hand_contrib
@@ -406,11 +406,16 @@ impl Game {
             }
             player.chips += to_pay[id];
 
-            if player.chips == 0 {
+            if player.chips == 0 && !player.eliminated {
                 player.eliminated = true;
+                player.folded = true;
                 println!("{} eliminated!",player.display_name);
             }
         }
+
+        // If the game's over, for now just set the internal variable to true
+        self.game_over = self.players.iter()
+                                     .fold(0, |sum, (_, player)| if player.eliminated { sum + 1 } else { sum }) == self.num_players - 1;
 
         self.new_hand();
     }
@@ -450,6 +455,8 @@ impl Game {
 
         // Start action
         self.to_act = self.next_player(self.seat_order[0]);
+        let big_blind = &self.next_player(self.to_act);
+        self.players.get_mut(big_blind).unwrap().has_option = true;
         self.player_action(Action::PostBlind(1));
         self.player_action(Action::PostBlind(2));
 
@@ -533,7 +540,7 @@ impl Game {
         let best_rank = ids.iter()
                            .fold(Rank::HighCard(0), |best, id| {
                                 let player = self.players.get(&id).unwrap();
-                                if !player.folded {
+                                if !player.folded && !player.eliminated {
                                     let new_rank = (&player).get_rank(&self.board);
                                     if new_rank > best {
                                         new_rank.to_owned()
@@ -546,7 +553,7 @@ impl Game {
                            });
 
         for (id, player) in self.players.iter() {
-            if player.get_rank(&self.board) == best_rank {
+            if !player.folded && !player.eliminated && player.get_rank(&self.board) == best_rank {
                 best_hands.push(id.clone());
             }
         }

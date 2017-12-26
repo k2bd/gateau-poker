@@ -178,7 +178,7 @@ impl Game {
                     if bet + plyr.street_contrib == self.current_bet {
                         println!("GAME - Player {} calls {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
                     } else if self.current_bet == 0 || (self.street == Street::PreFlop && self.current_bet == 2) {
-                        // TODO: Change = 2 to a big blind varaible
+                        // TODO: Swap 2 for a big blind varaible
                         println!("GAME - Player {} bets {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
                     } else {
                         println!("GAME - Player {} raises {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
@@ -335,7 +335,7 @@ impl Game {
 
         let mut current_pot = self.players.iter()
                                           .map(|(_, player)| {
-                                            if player.folded {
+                                            if player.folded || player.hand_contrib == 0 {
                                                 usize::max_value()
                                             } else {
                                                 player.hand_contrib
@@ -363,8 +363,8 @@ impl Game {
             // Split payout between winners
             let indiv_payout = payout / winners.len();
 
-            for id in &winners {
-                to_pay[*id] += indiv_payout;
+            for &id in &winners {
+                to_pay[id] += indiv_payout;
             }
 
             let mut paid_out = indiv_payout * winners.len();
@@ -379,15 +379,19 @@ impl Game {
                 change_target += 1;
             }
 
-            current_pot = self.players.iter()
-                                      .map(|(_, player)| {
-                                        if player.folded {
-                                            usize::max_value()
-                                        } else {
-                                            player.hand_contrib
-                                        }
-                                      })
-                                      .min().unwrap();
+            if self.players.iter().all(|(_, player)| player.hand_contrib == 0) {
+                current_pot = 0;
+            } else {
+                current_pot = self.players.iter()
+                                          .map(|(_, player)| {
+                                            if player.folded || player.hand_contrib == 0 {
+                                                usize::max_value()
+                                            } else {
+                                                player.hand_contrib
+                                            }
+                                          })
+                                          .min().unwrap();
+            }
         }
 
         // Print summary of payouts
@@ -397,9 +401,15 @@ impl Game {
             if player.folded {
                 println!("{}:{} folded",id, player.display_name);
             } else {
-                println!("{}:{} - {} for {:?} ({:?})",id, player.display_name, to_pay[id], player.hole_cards, player.get_rank(&self.board));
+                println!("{}:{} - {} for {:?} ({:?})",id, player.display_name, to_pay[id], 
+                                            player.hole_cards, player.get_rank(&self.board));
             }
             player.chips += to_pay[id];
+
+            if player.chips == 0 {
+                player.eliminated = true;
+                println!("{} eliminated!",player.display_name);
+            }
         }
 
         self.new_hand();
@@ -428,6 +438,7 @@ impl Game {
 
             if !player.eliminated {
                 player.folded = false;
+                player.all_in = false;
             }
         }
 

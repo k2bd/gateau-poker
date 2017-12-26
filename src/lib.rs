@@ -58,6 +58,10 @@ pub fn test() {
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);
     &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
-    &game.player_action(Action::Check);
+    
+    &game.player_action(Action::AllIn);
+    &game.player_action(Action::AllIn);
+    &game.player_action(Action::AllIn);
+    &game.player_action(Action::AllIn);
+    &game.player_action(Action::AllIn);
 }

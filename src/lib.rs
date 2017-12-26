@@ -6,6 +6,8 @@ mod game;
 mod player;
 
 use game::{Game,Action};
+// Temp
+use rand::{thread_rng, Rng};
 
 #[cfg(test)]
 mod tests {
@@ -30,7 +32,7 @@ pub fn test() {
                                                 .map(|id| &game.players.get(&id).unwrap().display_name)
                                                 .collect::<Vec<_>>());
 
-    while !&game.game_over {
+    loop {
         &game.player_action(Action::Call);
     }
 }

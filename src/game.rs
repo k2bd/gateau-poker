@@ -27,6 +27,7 @@ pub enum Action {
 pub struct Game {
     // TODO:
     //  - Push game moves to a database
+    //  - Add a timer to game moves
     // Possible Extensions (unnecessarily advanced)
     //  - Game consisting of multiple tables w/ appropriate table breaks
     //  - Optional ante
@@ -59,7 +60,7 @@ pub struct Game {
 }
 
 impl Game {
-    // Returns a new game object
+    /// Returns a new game object
     pub fn new(stack : usize) -> Game {
         Game{
             deck : create_deck(),
@@ -81,7 +82,7 @@ impl Game {
         }
     } // pub fn new
 
-    // Add a player to the game. Things like ID, starting stack, etc are handled automatically. 
+    /// Add a player to the game. Things like ID, starting stack, etc are handled automatically. 
     pub fn add_player(&mut self, name : &str) -> () {
         let id = self.num_players;
         self.players.insert(
@@ -96,11 +97,29 @@ impl Game {
     } // pub fn add_player
 
     /// Takes a player action and applies it to the game
+    /// 
+    /// # Valid actions
+    /// * Bet(amount)
+    ///   This is a basic action that can cover calling, betting, raising.
+    ///   This action moves a number of chips from your stack to the table in front of you.
+    ///   In this way, if you bet 10, someone else raises to 30, then Bet(20) is a call. 
+    ///   An under-call is interpreted as a call.
+    ///   A raise under the min-raise is a min-raise.
+    ///   Any bet that puts you above all-in just puts you all-in.
+    ///   Bet(0) is a special case and is a Check if it's legal, otherwise it's a Fold. 
+    /// * Check
+    ///   This is a basic action that just checks if it's legal to, otherwise it folds.
+    /// * Fold
+    ///   This folds your hand.
+    /// * Call
+    ///   This is a special action that bets to match the current bet, or just checks.
+    /// * AllIn
+    ///   This puts you all in. 
     pub fn player_action(&mut self, recv_action: Action) -> () {
 
         let real_action;
 
-        { // For mutable borrow of self through plyr
+        { // Block to contain mutable borrow in plyr
             let plyr = self.players.get_mut(&self.to_act).unwrap();
             // Interpret the recieved action into a legal action
             match recv_action {
@@ -212,7 +231,7 @@ impl Game {
                 plyr.all_in = true;
                 println!("GAME - Player {} has gone all-in!",plyr.display_name);
             }
-        } // End of mutable borrow block
+        } // End of block to free mutable borrow
 
         if self.is_hand_over() {
             self.end_hand();
@@ -464,6 +483,7 @@ impl Game {
 
     } // pub fn new_hand
 
+    /// Call this function to indicate the players are in and the game is ready to start.
     pub fn start(&mut self) -> () {
         println!("GAME - Starting");
         self.next_street();

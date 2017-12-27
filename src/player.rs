@@ -8,6 +8,7 @@ pub struct Player {
     pub folded : bool,
     pub chips : usize,
     pub display_name : String,
+    pub address : String,
     pub street_contrib : usize,
     pub hand_contrib : usize,
     pub has_option : bool,
@@ -16,10 +17,11 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(name : String, starting_stack : usize) -> Player {
+    pub fn new(name : String, address: String, starting_stack : usize) -> Player {
         Player {
             chips : starting_stack,
             display_name : name,
+            address : address,
             hole_cards : Vec::new(),
             folded : false,
             hand_contrib : 0,

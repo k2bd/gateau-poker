@@ -42,8 +42,6 @@ pub struct Game {
 
     pub game_over : bool,
 
-    game_id : Uuid, // TODO: use this
-
     // Private Fields
     deck : FlatDeck,                      // A deck of cards
 
@@ -76,24 +74,34 @@ impl Game {
             button : 0,
             street : Street::River,
             to_act : 0,
-            game_id : Uuid::new_v4(),
+            //game_id : Uuid::new_v4(),
             current_bet : 0,
             min_raise : 2,
         }
     } // pub fn new
 
+    pub fn set_starting_stack(&mut self, stack: usize) -> () {
+        self.starting_stack = stack;
+        println!("CONFIG - Setting starting stack to {}",stack);
+    }
+
     /// Add a player to the game. Things like ID, starting stack, etc are handled automatically. 
-    pub fn add_player(&mut self, name : &str) -> () {
+    pub fn add_player(&mut self, name : &str, address: &str) -> usize {
+        // TODO: Change returned number to be a uuid for this player
         let id = self.num_players;
         self.players.insert(
             id,
-            Player::new(String::from(name), self.starting_stack)
+            Player::new(String::from(name), String::from(address), self.starting_stack)
         );
         self.seat_order.push(id);
         
         thread_rng().shuffle(&mut self.seat_order);
 
         self.num_players += 1;
+
+        println!("DEBUG - Added player {}:{}",id,name);
+
+        return id;
     } // pub fn add_player
 
     /// Takes a player action and applies it to the game

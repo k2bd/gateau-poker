@@ -1,6 +1,7 @@
 extern crate rs_poker;
 
 use rs_poker::core::{Card, Hand, Rank, Rankable};
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct Player {
@@ -14,6 +15,7 @@ pub struct Player {
     pub has_option : bool,
     pub all_in : bool,
     pub eliminated : bool,
+    pub secret_id : Uuid,
 }
 
 impl Player {
@@ -29,6 +31,7 @@ impl Player {
             has_option : false,
             all_in : false,
             eliminated : false,
+            secret_id : Uuid::new_v4(),
         }
     }
 

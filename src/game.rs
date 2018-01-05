@@ -50,7 +50,12 @@ pub struct Game {
     num_folded  : usize,                  // Number of players who have folded
     num_eliminated : usize,               // Number of players who have gone to 0 chips
 
+    started : bool,
+
+    // configurable
+    max_players : usize,
     starting_stack : usize,               // Number of chips we start with, with 1/2 blinds
+
     button : usize,                       // Position of the dealer button
 
     current_bet : usize,
@@ -64,6 +69,7 @@ impl Game {
             deck : create_deck(),
             board : Vec::new(),
             players : HashMap::new(),
+            max_players : 10,
             starting_stack : stack,
             seat_order : Vec::new(),
             game_over : false,
@@ -71,6 +77,7 @@ impl Game {
             num_in_play : 0,
             num_folded : 0,
             num_eliminated : 0,
+            started : false,
             button : 0,
             street : Street::River,
             to_act : 0,
@@ -80,14 +87,36 @@ impl Game {
         }
     } // pub fn new
 
-    pub fn set_starting_stack(&mut self, stack: usize) -> () {
+    pub fn set_starting_stack(&mut self, stack: usize) -> bool {
+        if self.started {
+            return false;
+        }
+
         self.starting_stack = stack;
         println!("CONFIG - Setting starting stack to {}",stack);
+
+        true
+    }
+
+    pub fn set_player_limit(&mut self, limit : usize) -> bool {
+        if self.started {
+            return false;
+        }
+
+        self.max_players = limit;
+        println!("CONFIG - Setting player limit ti {}",limit);
+
+        true
     }
 
     /// Add a player to the game. Things like ID, starting stack, etc are handled automatically. 
-    pub fn add_player(&mut self, name : &str, address: &str) -> usize {
-        // TODO: Change returned number to be a uuid for this player
+    pub fn add_player(&mut self, name : &str, address: &str) -> bool {
+        // TODO: POST the player info to the player
+
+        if self.num_players == self.max_players {
+            return false;
+        }
+
         let id = self.num_players;
         self.players.insert(
             id,
@@ -101,7 +130,7 @@ impl Game {
 
         println!("DEBUG - Added player {}:{}",id,name);
 
-        return id;
+        true
     } // pub fn add_player
 
     /// Takes a player action and applies it to the game
@@ -492,10 +521,19 @@ impl Game {
     } // pub fn new_hand
 
     /// Call this function to indicate the players are in and the game is ready to start.
-    pub fn start(&mut self) -> () {
+    pub fn start(&mut self) -> bool {
         // TODO: add in HTTP POST to all players with game info
+
+        if self.started {
+            return false;
+        }
+
         println!("GAME - Starting");
         self.next_street();
+
+        self.started = true;
+
+        true
     }
 
     /// Return the index of the next unfolded player in the move order

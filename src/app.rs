@@ -44,10 +44,15 @@ fn configure_game(game_config: Json<GameConfig>, game_lock: State<RwLock<Game>>)
     let mut game = game_lock.write().unwrap();
 
     match game_config.Config.to_lowercase().as_ref() {
+        // TODO: 
+        // - Make move timers configurable
         "starting_stack" => {
             (*game).set_starting_stack(game_config.Value);
-        }
-        other => {println!("DEBUG - Bad config option: {}",other)}
+        },
+        "start" => {
+            (*game).start();
+        },
+        other => {println!("DEBUG - Bad config option: {}",other)},
     }
 }
 

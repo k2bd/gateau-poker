@@ -1,0 +1,16 @@
+server stars, hosts a game
+
+I can POST game config info over web to control starting stack, start the game early, etc.
+
+player registers to the game (POST /reg) with player info (Display name, IP address & port), server returns an ingame ID (counts up from 0) and a secret UUID for validation
+
+game starts, server POSTs turn order, initial button position, etc to all players.
+POSTs small blind info to all players
+POSTs big blind info to all players
+-- Waits on UTG --
+
+UTG player POSTs the move they want to make
+
+Game server interprets move into a legal move (e.g. under-bet --> min-bet, illegal check --> fold)
+POSTs interpreted move info to all players
+-- Waits on UTG+1--

@@ -493,6 +493,7 @@ impl Game {
 
     /// Call this function to indicate the players are in and the game is ready to start.
     pub fn start(&mut self) -> () {
+        // TODO: add in HTTP POST to all players with game info
         println!("GAME - Starting");
         self.next_street();
     }

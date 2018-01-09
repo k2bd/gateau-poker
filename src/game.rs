@@ -23,35 +23,57 @@ pub enum Action {
     AllIn,
 }
 
-struct PlayerInfo {
+struct PlayerPrivateInfo {
+    info : String, // "PlayerPrivateInfo"
     ingame_id : usize,
     secret_id : String,
+}
+
+struct GameTableInfo {
+    info : String,
     starting_stack : usize,
-}
-
-struct GameStatusUpdate {
-    street : String,
-    new_cards : Vec<String>,
-}
-
-struct PlayerHandReveal {
-    player_id  : usize,
-    hole_cards : (String, String),
+    seat_order : Vec<usize>,
+    button_position : usize,
+    display_names : Vec<(usize, String)>,
 }
 
 struct ToMove {
+    info : String,
     player_id : usize,
+    hand_number : usize,
 }
 
 struct MoveInfo {
+    info : String,
     player_id : usize,
-    action : String,
+    move_type : String,
     value : usize,
+    hand_number : usize,
+}
+
+struct StreetInfo {
+    info : String,
+    street : String,
+    button_position : usize,
+    board_cards_revealed : Vec<String>,
+    hand_number : usize,
 }
 
 struct PayoutInfo {
-    player_id : usize,
-    amount : usize,
+    info : String,
+    reason : String,                            // E.g. "All others folded", "Showdown"
+    payouts : Vec<(usize, usize)>,              // Player IDs and payout amounts
+    hole_cards : Vec<(usize,(String, String))>, // Player IDs and revealed cards, if any
+}
+
+struct PlayerEliminatedInfo {
+    info : String,
+    eliminated_player : String,
+}
+
+struct GameOverInfo {
+    info : String,
+    winning_player : String,
 }
 
 #[derive(Debug)]
@@ -60,6 +82,7 @@ pub struct Game {
     // TODO:
     //  - Push game moves to a database
     //  - Add a timer to game moves
+    //  - Get rid of reqwest client, switch to well-implemented asynch
     // Possible Extensions (unnecessarily advanced)
     //  - Game consisting of multiple tables w/ appropriate table breaks
     //  - Optional ante
@@ -91,6 +114,8 @@ pub struct Game {
 
     current_bet : usize,
     min_raise   : usize,
+
+    client : reqwest::Client,
 }
 
 impl Game {
@@ -115,6 +140,7 @@ impl Game {
             //game_id : Uuid::new_v4(),
             current_bet : 0,
             min_raise : 2,
+            client : reqwest::Client::new(),
         }
     } // pub fn new
 
@@ -563,15 +589,12 @@ impl Game {
         }
 
         println!("DEBUG - Sending player information");
-
-        // TODO: can we move this client into the struct in a thread-safe way?
-        let client = reqwest::Client::new();
         
         for (&id, player) in self.players.iter() {
-            let player_info = PlayerInfo {
+            let player_info = PlayerPrivateInfo {
+                info : "PlayerPrivateInfo".to_string(),
                 ingame_id : id,
                 secret_id : player.secret_id.simple().to_string(),
-                starting_stack : self.starting_stack,
             };
 
             let mut header = Headers::new();
@@ -583,10 +606,10 @@ impl Game {
 
             let post_addr = player.address.to_owned()+"/player";
 
-            let response = client.post(&post_addr[..])
-                                 .headers(header)
-                                 .send()
-                                 .unwrap();
+            let response = self.client.post(&post_addr[..])
+                                      .headers(header)
+                                      .send()
+                                      .unwrap();
 
             println!("DEBUG - Sent player info to Player {}: {}",player.display_name,response.status());
         }
@@ -726,5 +749,5 @@ fn create_deck() -> FlatDeck {
 }
 
 fn card_to_string(card: Card) -> String {
-    format!("{}{}",card.value.to_char(),self.suit.to_char())
+    format!("{}{}",card.value.to_char(),card.suit.to_char())
 }

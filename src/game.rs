@@ -2,7 +2,8 @@ use player::Player;
 use std::collections::HashMap;
 use rand::{thread_rng, Rng};
 use rs_poker::core::{Deck, Card, Flattenable, FlatDeck, Rank};
-use uuid::Uuid;
+use reqwest::header::{Headers, ContentType};
+use reqwest;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -20,6 +21,12 @@ pub enum Action {
     PostBlind(usize),
     Call,
     AllIn,
+}
+
+struct PlayerInfo {
+    ingame_id : usize,
+    secret_id : String,
+    starting_stack : usize,
 }
 
 #[derive(Debug)]
@@ -40,20 +47,19 @@ pub struct Game {
     pub street : Street,                  // Street we're currently on
     pub to_act : usize,                   // Which player has action
 
-    pub game_over : bool,
-
     // Private Fields
     deck : FlatDeck,                      // A deck of cards
+
+    started : bool,                       // Has the game started?
+    game_over : bool,                     // Is the game over?
 
     num_players : usize,                  // Player count
     num_in_play : usize,                  // Number of players able to act (not folded or all-in)
     num_folded  : usize,                  // Number of players who have folded
     num_eliminated : usize,               // Number of players who have gone to 0 chips
 
-    started : bool,
-
     // configurable
-    max_players : usize,
+    max_players : usize,                  // Maximum number of players that can join
     starting_stack : usize,               // Number of chips we start with, with 1/2 blinds
 
     button : usize,                       // Position of the dealer button
@@ -64,13 +70,13 @@ pub struct Game {
 
 impl Game {
     /// Returns a new game object
-    pub fn new(stack : usize) -> Game {
+    pub fn new() -> Game {
         Game{
             deck : create_deck(),
             board : Vec::new(),
             players : HashMap::new(),
             max_players : 10,
-            starting_stack : stack,
+            starting_stack : 0,
             seat_order : Vec::new(),
             game_over : false,
             num_players : 0,
@@ -99,12 +105,15 @@ impl Game {
     }
 
     pub fn set_player_limit(&mut self, limit : usize) -> bool {
+        // TODO: Don't let us set the limit to less than the number of players that have joined
+        //       ^ incorporate this into the return error message
+
         if self.started {
             return false;
         }
 
         self.max_players = limit;
-        println!("CONFIG - Setting player limit ti {}",limit);
+        println!("CONFIG - Setting player limit to {}",limit);
 
         true
     }
@@ -526,6 +535,35 @@ impl Game {
 
         if self.started {
             return false;
+        }
+
+        println!("DEBUG - Sending player information");
+
+        // TODO: can we move this client into the struct in a thread-safe way?
+        let client = reqwest::Client::new();
+        
+        for (&id, player) in self.players.iter() {
+            let player_info = PlayerInfo {
+                ingame_id : id,
+                secret_id : player.secret_id.simple().to_string(),
+                starting_stack : self.starting_stack,
+            };
+
+            let mut header = Headers::new();
+            header.set(
+                ContentType::json()
+            );
+
+            println!("DEBUG - Sending info to Player {}",player.display_name);
+
+            let post_addr = player.address.to_owned()+"/player";
+
+            let response = client.post(&post_addr[..])
+                                 .headers(header)
+                                 .send()
+                                 .unwrap();
+
+            println!("DEBUG - Sent player info to Player {}: {}",player.display_name,response.status());
         }
 
         println!("GAME - Starting");

@@ -29,6 +29,31 @@ struct PlayerInfo {
     starting_stack : usize,
 }
 
+struct GameStatusUpdate {
+    street : String,
+    new_cards : Vec<String>,
+}
+
+struct PlayerHandReveal {
+    player_id  : usize,
+    hole_cards : (String, String),
+}
+
+struct ToMove {
+    player_id : usize,
+}
+
+struct MoveInfo {
+    player_id : usize,
+    action : String,
+    value : usize,
+}
+
+struct PayoutInfo {
+    player_id : usize,
+    amount : usize,
+}
+
 #[derive(Debug)]
 /// Contains the state of the poker game, including players, cards, action, etc.
 pub struct Game {
@@ -70,13 +95,13 @@ pub struct Game {
 
 impl Game {
     /// Returns a new game object
-    pub fn new() -> Game {
+    pub fn new(stack : usize) -> Game {
         Game{
             deck : create_deck(),
             board : Vec::new(),
             players : HashMap::new(),
             max_players : 10,
-            starting_stack : 0,
+            starting_stack : stack,
             seat_order : Vec::new(),
             game_over : false,
             num_players : 0,
@@ -698,4 +723,8 @@ fn create_deck() -> FlatDeck {
     let mut deck = Deck::default().flatten();
     deck.shuffle();
     return deck;
+}
+
+fn card_to_string(card: Card) -> String {
+    format!("{}{}",card.value.to_char(),self.suit.to_char())
 }

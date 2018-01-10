@@ -142,7 +142,7 @@ fn rocket() -> rocket::Rocket {
     // TODO:
     // We can make this client managed several Games in a Vec... manage a Vec of RwLocked games
     rocket::ignite()
-        .mount("/kev-poker",routes![configure_game, join_game, make_move])
+        .mount("/",routes![configure_game, join_game, make_move])
         .manage(RwLock::new(Game::new(200))) // Default game is 100 big blinds
 }
 

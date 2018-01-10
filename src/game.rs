@@ -42,6 +42,13 @@ struct GameTableInfo {
 }
 
 #[derive(Serialize)]
+struct HoleCardInfo {
+    info : String,
+    hole_cards : (String, String),
+    hand_number : usize,
+}
+
+#[derive(Serialize)]
 struct MoveInfo {
     info : String, // "MoveInfo"
     player_id : usize,
@@ -341,7 +348,6 @@ impl Game {
                     println!("GAME - Player {} posts blind {}",plyr.display_name, blind);
                 },
                 _ => {
-                    move_type = "Error";
                     panic!("Invalid action got here");
                 }
             }
@@ -681,6 +687,17 @@ impl Game {
         for (_, plyr) in &mut self.players {
             let cards = deal_hole(&mut self.deck);
             plyr.give_hand(&cards);
+        }
+
+        for (&id, player) in self.players.iter() {
+            let hole_card_info = HoleCardInfo {
+                info : "HoleCardInfo".to_string(),
+                hole_cards : (card_to_string(&player.hole_cards[0]),
+                              card_to_string(&player.hole_cards[1])),
+                hand_number : self.hand_number,
+            };
+            let response = &self.send_to_player(id, &hole_card_info);
+            println!("Sent player {} hole cards: {}",id,response.status());
         }
 
         // Reset some player stuff and print chip counts

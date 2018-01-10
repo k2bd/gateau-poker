@@ -49,9 +49,9 @@ Game moves are submitted here.
 
 ### Received by Client
 #### `/player`
-This endpoint is used for the game to `POST` game updates. 
+This endpoint is for the game to `POST` game to. 
 The following structures may be sent and should be listened for.
-The "info" field is shared by all structures and can be used to determine what action to take.
+The "info" field is shared by all structures and can be used to determine what the structure represents.
 ##### PlayerPrivateInfo
 This is sent when all players have joined. 
 It contains both the player's public in-game ID and its secret ID that it uses for move validation.
@@ -73,6 +73,15 @@ It contains things like the player move order as well as the starting stacks, et
     "seat_order" : Vec<usize>,              // Clockwise seat order - cyclical
     "button_player" : usize,                // Player who currently posesses the dealer button
     "display_names" : Vec<(usize, String)>, // Map of ingame IDs to a player-specified name
+}
+```
+
+##### HoleCardInfo 
+```
+{
+    "info" : "HoleCardInfo",         
+    "hole_cards" : (String, String), // The two cards that you got
+    "hand_number" : usize,           // The hand number
 }
 ```
 

@@ -77,6 +77,7 @@ It contains things like the player move order as well as the starting stacks, et
 ```
 
 ##### HoleCardInfo 
+This is sent at the start of a hand, informing you of what cards you have.
 ```
 {
     "info" : "HoleCardInfo",         

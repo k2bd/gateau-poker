@@ -29,7 +29,7 @@ struct GameConfig {
 
 #[derive(Serialize,Deserialize)]
 struct PlayerMessage {
-    player_id : Uuid,  // Player must confirm its ID when it makes a move. TODO: Make this a serializable uuid
+    secret_id : Uuid,  // Player must confirm its ID when it makes a move.
     action   : String, // Bet, Call, Fold, Check, AllIn
     value    : usize,  // In the case of bet, the amount to bet, otherwise unused
 }
@@ -116,8 +116,8 @@ fn make_move(action: Json<PlayerMessage>, game_lock: State<RwLock<Game>>) -> Jso
     let mut game = game_lock.write().unwrap();
 
     // TODO: Check against the current player's uuid
-    if action.player_id != game.players.get(&game.to_act).unwrap().secret_id {
-        println!("DEBUG - Recieved secret ID {} does not match expected {}",action.player_id,game.players.get(&game.to_act).unwrap().secret_id);
+    if action.secret_id != game.players.get(&game.to_act).unwrap().secret_id {
+        println!("DEBUG - Recieved secret ID {} does not match expected {}",action.secret_id,game.players.get(&game.to_act).unwrap().secret_id);
         return Json(json!({
             "status" : "error",
             "reason" : "Not your turn!"

@@ -493,6 +493,13 @@ impl Game {
         };
 
         self.send_to_all_players(&street_info);
+
+        let to_move = ToMoveInfo {
+            info : "ToMoveInfo".to_string(),
+            player_id : self.to_act,
+            hand_number : self.hand_number,
+        };
+        self.send_to_all_players(&to_move);
     }
 
     fn end_hand(&mut self) -> () {
@@ -709,8 +716,14 @@ impl Game {
             board_cards_revealed : Vec::<String>::new(),
             hand_number : self.hand_number,
         };
-
         self.send_to_all_players(&street_info);
+
+        let to_move = ToMoveInfo {
+            info : "ToMoveInfo".to_string(),
+            player_id : self.to_act,
+            hand_number : self.hand_number,
+        };
+        self.send_to_all_players(&to_move);
 
     } // pub fn new_hand
 

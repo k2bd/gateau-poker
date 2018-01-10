@@ -51,14 +51,15 @@ Game moves are submitted here.
 #### `/player`
 This endpoint is used for the game to `POST` game updates. 
 The following structures may be sent and should be listened for.
+The "info" field is shared by all structures and can be used to determine what action to take.
 ##### PlayerPrivateInfo
 This is sent when all players have joined. 
 It contains both the player's public in-game ID and its secret ID that it uses for move validation.
 ```
 {
     "info"      : "PlayerPrivateInfo",
-    "ingame_id" : usize,
-    "secret_id" : String,
+    "ingame_id" : usize,               // Public ingame player number
+    "secret_id" : String,              // A uuid as a string with dashes
 }
 ```
 
@@ -67,22 +68,26 @@ This is sent when the game starts.
 It contains things like the player move order as well as the starting stacks, etc.
 ```
 {
-    "info" : "GameTableInfo"
-    "starting_stack" : usize,
-    "seat_order" : Vec<usize>,
-    "button_player" : usize,
-    "display_names" : Vec<(usize, String)>,
+    "info" : "GameTableInfo"                
+    "starting_stack" : usize,               // Chip amounts everyone starts with
+    "seat_order" : Vec<usize>,              // Clockwise seat order - cyclical
+    "button_player" : usize,                // Player who currently posesses the dealer button
+    "display_names" : Vec<(usize, String)>, // Map of ingame IDs to a player-specified name
 }
 ```
 
 ##### MoveInfo 
 This is sent when the game has received and interpreted a move from the player with action.
-```{
-    "info" : "MoveInfo"
-    "player_id" : usize,
-    "move_type" : String,
-    "value" : usize,
-    "hand_number" : usize,
+
+N.B. "Bet" in this context means taking new chips from your stack and putting them in front of you for any reason.
+As such it covers betting, raising, and calling.
+```
+{
+    "info" : "MoveInfo"    
+    "player_id" : usize,   // Player that made the move
+    "move_type" : String,  // "Bet", "Fold", "Check"
+    "value" : usize,       // Value of move if applicable
+    "hand_number" : usize, // Current hand number
 }
 ```
 
@@ -90,9 +95,9 @@ This is sent when the game has received and interpreted a move from the player w
 This is sent when the game is waiting on a player to move.
 ```
 {
-    "info" : "ToMoveInfo",
-    "player_id" : usize,
-    "hand_number" : usize,
+    "info" : "ToMoveInfo", 
+    "player_id" : usize,   // Player we're waiting on
+    "hand_number" : usize, // Current hand number
 }
 ```
 
@@ -101,10 +106,10 @@ This is sent when a new street is dealt.
 ```
 {
     "info" : "StreetInfo"
-    "street" : String,
-    "button_player" : usize,
-    "board_cards_revealed" : Vec<String>,
-    "hand_number" : usize,
+    "street" : String,                    // "PreFlop", "Flop", "Turn", "River"
+    "button_player" : usize,              // Player that currently holds the dealer button
+    "board_cards_revealed" : Vec<String>, // List of cards that got revealed, if any
+    "hand_number" : usize,                // Current hand number
 }
 ```
 
@@ -153,3 +158,6 @@ This is sent when only one player has any chips and the game is over.
 * Secure configuration endpoint
 * Add a database of game info
 * Move to asynch player pushes
+
+# License
+See `NOTICE` file

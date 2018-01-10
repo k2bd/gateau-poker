@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use rand::{thread_rng, Rng};
 use rs_poker::core::{Deck, Card, Flattenable, FlatDeck, Rank};
 use reqwest::header::{Headers, ContentType};
+use reqwest::{Response};
 use reqwest;
+use serde::{Serialize};
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -23,56 +25,64 @@ pub enum Action {
     AllIn,
 }
 
+#[derive(Serialize)]
 struct PlayerPrivateInfo {
     info : String, // "PlayerPrivateInfo"
     ingame_id : usize,
     secret_id : String,
 }
 
+#[derive(Serialize)]
 struct GameTableInfo {
-    info : String,
+    info : String, // "GameTableInfo"
     starting_stack : usize,
     seat_order : Vec<usize>,
-    button_position : usize,
+    button_player : usize,
     display_names : Vec<(usize, String)>,
 }
 
-struct ToMove {
-    info : String,
-    player_id : usize,
-    hand_number : usize,
-}
-
+#[derive(Serialize)]
 struct MoveInfo {
-    info : String,
+    info : String, // "MoveInfo"
     player_id : usize,
     move_type : String,
     value : usize,
     hand_number : usize,
 }
 
-struct StreetInfo {
+#[derive(Serialize)]
+struct ToMoveInfo {
     info : String,
+    player_id : usize,
+    hand_number : usize,
+}
+
+#[derive(Serialize)]
+struct StreetInfo {
+    info : String, // "StreetInfo"
     street : String,
-    button_position : usize,
+    button_player : usize,
     board_cards_revealed : Vec<String>,
     hand_number : usize,
 }
 
+#[derive(Serialize)]
 struct PayoutInfo {
-    info : String,
+    info : String,                              // "PayoutInfo"
     reason : String,                            // E.g. "All others folded", "Showdown"
     payouts : Vec<(usize, usize)>,              // Player IDs and payout amounts
     hole_cards : Vec<(usize,(String, String))>, // Player IDs and revealed cards, if any
 }
 
+#[derive(Serialize)]
 struct PlayerEliminatedInfo {
-    info : String,
+    info : String, // "PlayerEliminationInfo"
     eliminated_player : String,
 }
 
+#[derive(Serialize)]
 struct GameOverInfo {
-    info : String,
+    info : String, // "GameOverInfo"
     winning_player : String,
 }
 
@@ -115,6 +125,8 @@ pub struct Game {
     current_bet : usize,
     min_raise   : usize,
 
+    hand_number : usize,
+
     client : reqwest::Client,
 }
 
@@ -141,6 +153,7 @@ impl Game {
             current_bet : 0,
             min_raise : 2,
             client : reqwest::Client::new(),
+            hand_number : 0,
         }
     } // pub fn new
 
@@ -215,6 +228,8 @@ impl Game {
     pub fn player_action(&mut self, recv_action: Action) -> () {
 
         let real_action;
+        let move_type;
+        let mut move_amnt = 0;
 
         { // Block to contain mutable borrow in plyr
             let plyr = self.players.get_mut(&self.to_act).unwrap();
@@ -285,15 +300,19 @@ impl Game {
 
             match real_action {
                 Action::Check => {
+                    move_type = "Check";
                     println!("GAME - Player {} checks",plyr.display_name);
                     plyr.has_option = false;
                 },
                 Action::Fold => {
+                    move_type = "Fold";
                     plyr.folded = true;
                     println!("GAME - Player {} folds",plyr.display_name);
                     plyr.has_option = false;
                 },
                 Action::Bet(bet) => {
+                    move_type = "Bet";
+                    move_amnt = bet;
                     if bet + plyr.street_contrib == self.current_bet {
                         println!("GAME - Player {} calls {} (total {})",plyr.display_name, bet, bet + plyr.street_contrib);
                     } else if self.current_bet == 0 || (self.street == Street::PreFlop && self.current_bet == 2) {
@@ -315,11 +334,14 @@ impl Game {
                     plyr.has_option = false;
                 },
                 Action::PostBlind(blind) => {
+                    move_type = "Blind";
+                    move_amnt = blind;
                     plyr.street_contrib += blind;
                     plyr.chips -= blind;
                     println!("GAME - Player {} posts blind {}",plyr.display_name, blind);
                 },
                 _ => {
+                    move_type = "Error";
                     panic!("Invalid action got here");
                 }
             }
@@ -330,12 +352,28 @@ impl Game {
             }
         } // End of block to free mutable borrow
 
+        let move_info = MoveInfo {
+            info : "MoveInfo".to_string(),
+            player_id : self.to_act,
+            move_type : move_type.to_string(),
+            value : move_amnt,
+            hand_number : self.hand_number,
+        };
+
+        self.send_to_all_players(&move_info);
+        
         if self.is_hand_over() {
             self.end_hand();
         } else if self.is_street_over() {
             self.next_street();
         } else {
             self.to_act = self.next_player(self.to_act);
+            let to_move = ToMoveInfo {
+                info : "ToMoveInfo".to_string(),
+                player_id : self.to_act,
+                hand_number : self.hand_number,
+            };
+            self.send_to_all_players(&to_move);
         }
     }
 
@@ -418,20 +456,43 @@ impl Game {
         self.players.get_mut(&option_player).unwrap().has_option = true;
 
         // Deal the cards for the street
+        let revealed_cards_raw : Vec<Card>;
+        let revealed_cards: Vec<String>;
+        let street_name;
         match self.street {
             Street::Flop => {
                 println!("GAME - Flop: {:?}",&self.board[0..3]);
+                revealed_cards_raw = self.board[0..3].to_vec();
+                street_name = "Flop";
             },
             Street::Turn => {
                 println!("GAME - Turn: {:?}",&self.board[3]);
+                revealed_cards_raw = vec!(self.board[3]);
+                street_name = "Turn";
             },
             Street::River => {
                 println!("GAME - River: {:?}",&self.board[4]);
+                revealed_cards_raw = vec!(self.board[4]);
+                street_name = "River";
             }
             _ => {
                 panic!("Invalid street!");
             }
         }
+
+        revealed_cards = revealed_cards_raw.iter()
+                                           .map(|card| card_to_string(card))
+                                           .collect::<Vec<_>>();
+
+        let street_info = StreetInfo {
+            info : "StreetInfo",
+            street : street_name.to_string(),
+            button_player : self.seat_order[self.button],
+            board_cards_revealed : revealed_cards,
+            hand_number : self.hand_number,
+        };
+
+        self.send_to_all_players(&street_info);
     }
 
     fn end_hand(&mut self) -> () {
@@ -538,6 +599,9 @@ impl Game {
 
     /// Sets up a new hand: shuffles a new deck, deals, etc.
     fn new_hand(&mut self) -> () {
+        // Increase hand number
+        self.hand_number += 1;
+
         // Create a new deck
         self.deck = create_deck();
 
@@ -582,14 +646,22 @@ impl Game {
 
     /// Call this function to indicate the players are in and the game is ready to start.
     pub fn start(&mut self) -> bool {
-        // TODO: add in HTTP POST to all players with game info
-
         if self.started {
             return false;
         }
 
         println!("DEBUG - Sending player information");
         
+        let game_info = GameTableInfo {
+            info : "GameTableInfo".to_string(),
+            starting_stack : self.starting_stack,
+            seat_order : self.seat_order.clone(), // TODO: differnet soln
+            button_player : self.seat_order[self.button],
+            display_names : self.seat_order.iter()
+                                           .map(|&id| (id, self.players[&id].display_name.clone()))
+                                           .collect::<Vec<_>>()
+        };
+
         for (&id, player) in self.players.iter() {
             let player_info = PlayerPrivateInfo {
                 info : "PlayerPrivateInfo".to_string(),
@@ -597,23 +669,17 @@ impl Game {
                 secret_id : player.secret_id.simple().to_string(),
             };
 
-            let mut header = Headers::new();
-            header.set(
-                ContentType::json()
-            );
-
             println!("DEBUG - Sending info to Player {}",player.display_name);
 
-            let post_addr = player.address.to_owned()+"/player";
+            // TODO: remove synch comms
+            let response = self.send_to_player(id, &player_info);
 
-            let response = self.client.post(&post_addr[..])
-                                      .headers(header)
-                                      .send()
-                                      .unwrap();
-
-            println!("DEBUG - Sent player info to Player {}: {}",player.display_name,response.status());
+            println!("DEBUG - {}: {}",self.players[&id].display_name, 
+                                                    response.status());
         }
 
+        self.send_to_all_players(&game_info);
+        
         println!("GAME - Starting");
         self.next_street();
 
@@ -685,6 +751,38 @@ impl Game {
         panic!("Something wrong in Game::next_player");
     }
 
+    /// Send a seralizable JSON message to all players
+    fn send_to_all_players<T: Serialize>(&self, message : &T) -> () {
+
+        let mut responses = Vec::new();
+
+        for (&id, _) in self.players.iter() {
+            responses.push((id, self.send_to_player(id, message)));
+        }
+
+        println!("DEBUG - Responses:"); // TODO: create a trait barrier so we can grab the info field from T
+        for (id, response) in responses {
+            println!("DEBUG - {}: {}",self.players[&id].display_name, response.status());
+        }
+     }
+
+    fn send_to_player<T: Serialize>(&self, player_id: usize, message: &T) -> Response {
+        let mut header = Headers::new();
+        header.set(
+            ContentType::json()
+        );
+
+        let player = &self.players[&player_id];
+
+        let post_addr = player.address.to_owned()+"/player";
+
+        self.client.post(&post_addr[..])
+                   .headers(header)
+                   .json(message)
+                   .send()
+                   .unwrap()
+    }
+
     /// Of the players still in the hand, return a `Vec<usize>` of 
     /// the ID(s) of the player(s) with the best hand
     fn get_winners(&self, ids: Vec<usize>) -> Vec<usize> {
@@ -748,6 +846,6 @@ fn create_deck() -> FlatDeck {
     return deck;
 }
 
-fn card_to_string(card: Card) -> String {
+fn card_to_string(card: &Card) -> String {
     format!("{}{}",card.value.to_char(),card.suit.to_char())
 }

@@ -4,17 +4,6 @@ This is a project that aims to allow poker bots and humans to compete together a
 Any client must be able to `POST` and recieve `POST`s from the server according to the specification below.
 The server attempts to correctly recreate the rules of Hold'em; any deviations not listed below should be opened as an issue.
 
-## Interpretation of received game moves
-The game will always interpret a legal move from what you `POST`. If you send an illegal move it will be reinterpreted according to the following rules.
-
-### Check
-An inappropriate check is a fold.
-### Bet
-A bet of 0 is ambiguous and will be interpreted as a check if possible, otherwise a fold.
-A bet that's less than a call is a call.
-A raise that's less than the minimum amount is a min-raise.
-A bet that's greater than your stack is an all-in.
-
 ## Specification of JSON structures expected by each endpoint
 ### Received by Server
 #### `/config`
@@ -81,8 +70,8 @@ This is sent at the start of a hand, informing you of what cards you have.
 ```
 {
     "info" : "HoleCardInfo",         
-    "hole_cards" : (String, String), // The two cards that you got
-    "hand_number" : usize,           // The hand number
+    "hole_cards" : (String, String), // The two cards that you got, e.g. ['8s','Jd']
+    "hand_number" : usize,           // Current hand number, counting up from 1
 }
 ```
 
@@ -153,6 +142,17 @@ This is sent when only one player has any chips and the game is over.
     "winning_player" : usize,
 }
 ```
+
+## Interpretation of received game moves
+The game will always interpret a legal move from what you `POST`. If you send an illegal move it will be reinterpreted according to the following rules.
+
+### Check
+An inappropriate check is a fold.
+### Bet
+A bet of 0 is ambiguous and will be interpreted as a check if possible, otherwise a fold.
+A bet that's less than a call is a call.
+A raise that's less than the minimum amount is a min-raise.
+A bet that's greater than your stack is an all-in.
 
 ## Known deviations from the rules
 ### Simplifications

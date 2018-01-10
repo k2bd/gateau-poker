@@ -485,7 +485,7 @@ impl Game {
                                            .collect::<Vec<_>>();
 
         let street_info = StreetInfo {
-            info : "StreetInfo",
+            info : "StreetInfo".to_string(),
             street : street_name.to_string(),
             button_player : self.seat_order[self.button],
             board_cards_revealed : revealed_cards,
@@ -504,9 +504,12 @@ impl Game {
         }
 
         let mut to_pay = Vec::new();
+        // TODO: auto-muck hands that wouldn't be forced to reveal!
+        let mut hand_revealed = Vec::new();
 
         for _ in 0..self.num_players {
             to_pay.push(0);
+            hand_revealed.push(false);
         }
 
         let mut current_pot = self.players.iter()
@@ -525,6 +528,7 @@ impl Game {
             for (id, player) in &mut self.players {
                 if !player.folded && !player.eliminated && player.hand_contrib > 0 {
                     in_pot.push(id.clone());
+                    hand_revealed[*id] = true;
                 }
 
                 let contrib = current_pot.min(player.hand_contrib);
@@ -570,6 +574,34 @@ impl Game {
                                           .min().unwrap();
             }
         }
+
+        let payouts = (0..self.num_players).map(|x| (x, to_pay[x]))
+                                           .collect::<Vec<(usize, usize)>>();
+        
+        // Create a Vec<(id, (card, card))> for each player whose hand is revealed
+        // during showdown
+        let hands_revealed = (0..self.num_players)
+                                .filter_map(|id| {
+                                    if hand_revealed[id] {
+                                        let player_cards = &self.players[&id].hole_cards;
+                                        Some(
+                                            (id, (card_to_string(&player_cards[0]),
+                                                  card_to_string(&player_cards[1])))
+                                        )
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
+        let payout_info = PayoutInfo {
+            info : "PayoutInfo".to_string(),
+            reason : "Showdown".to_string(),
+            payouts : payouts,
+            hole_cards : hands_revealed,
+        };
+
+        self.send_to_all_players(&payout_info);
 
         // Print summary of payouts
         println!("BOARD - {:?}",self.board);
@@ -641,6 +673,16 @@ impl Game {
         self.player_action(Action::PostBlind(2));
 
         self.current_bet = 2;
+
+        let street_info = StreetInfo {
+            info : "StreetInfo".to_string(),
+            street : "PreFlop".to_string(),
+            button_player : self.seat_order[self.button],
+            board_cards_revealed : Vec::<String>::new(),
+            hand_number : self.hand_number,
+        };
+
+        self.send_to_all_players(&street_info);
 
     } // pub fn new_hand
 

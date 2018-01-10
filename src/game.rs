@@ -77,13 +77,13 @@ struct PayoutInfo {
 #[derive(Serialize)]
 struct PlayerEliminatedInfo {
     info : String, // "PlayerEliminationInfo"
-    eliminated_player : String,
+    eliminated_player : usize,
 }
 
 #[derive(Serialize)]
 struct GameOverInfo {
     info : String, // "GameOverInfo"
-    winning_player : String,
+    winning_player : usize,
 }
 
 #[derive(Debug)]
@@ -504,7 +504,9 @@ impl Game {
         }
 
         let mut to_pay = Vec::new();
-        // TODO: auto-muck hands that wouldn't be forced to reveal!
+        // TODO: Auto-muck hands that wouldn't be forced to reveal!
+        // TODO: Winner doesn't have to show hand if he won by fold!
+        //       Implement win-by-fold message.
         let mut hand_revealed = Vec::new();
 
         for _ in 0..self.num_players {
@@ -619,12 +621,38 @@ impl Game {
                 player.eliminated = true;
                 player.folded = true;
                 println!("{} eliminated!",player.display_name);
+                
+                // TODO: Move this somewhere out of mutable borrow of game!!
+                //let player_eliminated_info = PlayerEliminatedInfo {
+                //    info : "PlayerEliminatedInfo".to_string(),
+                //    eliminated_player : id,
+                //};
+                //self.send_to_all_players(&player_eliminated_info);
             }
         }
 
         // If the game's over, for now just set the internal variable to true
         self.game_over = self.players.iter()
-                                     .fold(0, |sum, (_, player)| if player.eliminated { sum + 1 } else { sum }) == self.num_players - 1;
+                                     .fold(0, |sum, (_, player)| 
+                                        if player.eliminated { sum + 1 } else { sum }
+                                    ) == self.num_players - 1;
+
+        if self.game_over {
+            let mut winning_player = self.num_players;
+
+            for (&id, player) in self.players.iter() {
+                if player.chips > 0 {
+                    winning_player = id;
+                    break;
+                }
+            }
+
+            let game_over_info = GameOverInfo {
+                info : "GameOverInfo".to_string(),
+                winning_player : winning_player,
+            };
+            self.send_to_all_players(&game_over_info);
+        }
 
         self.new_hand();
     }
@@ -798,7 +826,10 @@ impl Game {
 
         let mut responses = Vec::new();
 
-        for (&id, _) in self.players.iter() {
+        // Don't require responses from eliminated players
+        for (&id, _) in self.players
+                                .iter()
+                                .filter(|&(_, player)| !player.eliminated ) {
             responses.push((id, self.send_to_player(id, message)));
         }
 

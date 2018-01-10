@@ -141,6 +141,9 @@ This is sent when only one player has any chips and the game is over.
 
 ## Known deviations from the rules
 ### Simplifications
+* Currently no blind increases
+* Currently no antes
+
 ### To-dos
 * Winner's hand is revealed when everyone else folds
 * Players who don't have to reveal hands during showdown should auto-muck their hands
@@ -148,3 +151,5 @@ This is sent when only one player has any chips and the game is over.
 ## General To-dos
 * Add timer to moves
 * Secure configuration endpoint
+* Add a database of game info
+* Move to asynch player pushes

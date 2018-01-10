@@ -94,12 +94,12 @@ fn join_game(reg_data: Json<JoinData>, game_lock: State<RwLock<Game>>) -> Json<V
     let mut game = game_lock.write().unwrap();
 
     // Could change this to Option<PlayerInfo> or Result<PlayerInfo> and return stuff here
-    let space_to_join = (*game).add_player(reg_data.name.as_ref(),reg_data.address.as_ref());
+    let able_to_join = (*game).add_player(reg_data.name.as_ref(),reg_data.address.as_ref());
 
     // TODO: POST this ID to the new player's address so they can make moves
     // ^ put this is the add_player method...?
 
-    if space_to_join {
+    if able_to_join {
         return Json(json!({
             "status" : "ok",
         }));

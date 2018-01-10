@@ -191,9 +191,7 @@ impl Game {
 
     /// Add a player to the game. Things like ID, starting stack, etc are handled automatically. 
     pub fn add_player(&mut self, name : &str, address: &str) -> bool {
-        // TODO: POST the player info to the player
-
-        if self.num_players == self.max_players {
+        if (self.num_players == self.max_players) || self.started {
             return false;
         }
 

@@ -110,7 +110,7 @@ fn join_game(reg_data: Json<JoinData>, game_lock: State<RwLock<Game>>) -> Json<V
         }));
     }
 }
-
+ 
 #[post("/game", format="application/json", data="<action>")]
 fn make_move(action: Json<PlayerMessage>, game_lock: State<RwLock<Game>>) -> Json<Value> {
     let mut game = game_lock.write().unwrap();

@@ -115,7 +115,6 @@ fn join_game(reg_data: Json<JoinData>, game_lock: State<RwLock<Game>>) -> Json<V
 fn make_move(action: Json<PlayerMessage>, game_lock: State<RwLock<Game>>) -> Json<Value> {
     let mut game = game_lock.write().unwrap();
 
-    // TODO: Check against the current player's uuid
     if action.secret_id != game.players.get(&game.to_act).unwrap().secret_id {
         println!("DEBUG - Recieved secret ID {} does not match expected {}",action.secret_id,game.players.get(&game.to_act).unwrap().secret_id);
         return Json(json!({

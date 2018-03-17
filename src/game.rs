@@ -389,14 +389,23 @@ impl Game {
 
         let players_with_action = self.players.iter()
                                               .fold(0, |sum, (_, player)| {
-                                                if !player.folded && !player.eliminated && !player.all_in {
+                                                if !player.folded && !player.eliminated {// && !player.all_in {
                                                     sum + 1
                                                 } else {
                                                     sum
                                                 }
                                               });
+
+        let players_all_in = self.players.iter()
+                                         .fold(0, |sum, (_, player)| {
+                                             if player.all_in {
+                                                 sum + 1
+                                             } else {
+                                                 sum
+                                             }
+                                         });
         
-        if players_with_action == 1 {
+        if players_with_action == 1 || players_with_action == players_all_in {
             println!("DEBUG - HAND OVER");
             return true;
         }
@@ -675,6 +684,9 @@ impl Game {
 
         // Create a new deck
         self.deck = create_deck();
+
+        // Reset min-raise
+        self.min_raise = 2;
 
         // Move the button
         let temp = self.seat_order.remove(0);

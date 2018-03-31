@@ -730,6 +730,9 @@ impl Game {
 
         // Start action
         self.to_act = self.next_player(self.seat_order[0]);
+        if self.num_in_play() == 2 {
+            self.to_act = self.next_player(self.to_act);
+        }
         let big_blind = &self.next_player(self.to_act);
         self.players.get_mut(big_blind).unwrap().has_option = true;
         self.player_action(Action::PostBlind(1));
@@ -797,6 +800,10 @@ impl Game {
         self.started = true;
 
         true
+    }
+
+    fn num_in_play(&self) -> usize {
+        self.players.iter().fold(0,|sum, (_, ref player)| if !player.eliminated {sum + 1} else {sum})
     }
 
     /// Return the index of the next unfolded player in the move order

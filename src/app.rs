@@ -15,35 +15,55 @@ extern crate hyper;
 mod game;
 mod player;
 
+use std::collections::HashMap;
 use rocket_contrib::{Json, Value};
 use rocket::{State};
 use game::{Game,Action};
 use std::sync::RwLock;
+use std::ops::{Deref, DerefMut};
 use uuid::Uuid;
 
-#[derive(Serialize,Deserialize)]
+//#[derive(Serialize, Deserialize)]
+//struct CreateGame {
+//    game_id : String,
+//}
+//
+//#[derive(Serialize, Deserialize)]
+//struct DeleteGame {
+//    game_id : String, // TODO: authentication
+//}
+
+#[derive(Serialize, Deserialize)]
 struct GameConfig {
-    config : String, // Field to modify. At the moment just 'starting_stack'
-    value  : usize,
+    game_id : String,
+    config  : String, // Field to modify. At the moment just 'starting_stack'
+    value   : usize,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct PlayerMessage {
-    secret_id : Uuid,  // Player must confirm its ID when it makes a move.
-    action   : String, // Bet, Call, Fold, Check, AllIn
-    value    : usize,  // In the case of bet, the amount to bet, otherwise unused
+    game_id   : String, // The ID of the game being played
+    secret_id : Uuid,   // Player must confirm its ID when it makes a move.
+    action    : String, // Bet, Call, Fold, Check, AllIn
+    value     : usize,  // In the case of bet, the amount to bet, otherwise unused
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct JoinData {
+    game_id : String,
     name    : String, // Display name for the player
     address : String, // IP address of the player
 }
 
 #[post("/config", format="application/json", data="<game_config>")]
-fn configure_game(game_config: Json<GameConfig>, game_lock: State<RwLock<Game>>) -> Json<Value> {
-    //
-    let mut game = game_lock.write().unwrap();
+fn configure_game(game_config: Json<GameConfig>, game_lock: State<RwLock<HashMap<String,Game>>>) -> Json<Value> {
+    let mut games = game_lock.write().unwrap();
+
+    if !games.deref().contains_key(&game_config.game_id) {
+        games.deref_mut().insert(game_config.game_id.clone(), Game::new(200));
+    }
+
+    let mut game = games.get_mut(&game_config.game_id).unwrap();
 
     match game_config.config.to_lowercase().as_ref() {
         // TODO: 
@@ -90,8 +110,14 @@ fn configure_game(game_config: Json<GameConfig>, game_lock: State<RwLock<Game>>)
 }
 
 #[post("/reg", format="application/json", data="<reg_data>")]
-fn join_game(reg_data: Json<JoinData>, game_lock: State<RwLock<Game>>) -> Json<Value> {
-    let mut game = game_lock.write().unwrap();
+fn join_game(reg_data: Json<JoinData>, game_lock: State<RwLock<HashMap<String,Game>>>) -> Json<Value> {
+    let mut games = game_lock.write().unwrap();
+
+    if !games.deref().contains_key(&reg_data.game_id) {
+        games.deref_mut().insert(reg_data.game_id.clone(), Game::new(200));
+    }
+
+    let mut game = games.get_mut(&reg_data.game_id).unwrap();
 
     // Could change this to Option<PlayerInfo> or Result<PlayerInfo> and return stuff here
     let able_to_join = (*game).add_player(reg_data.name.as_ref(),reg_data.address.as_ref());
@@ -112,8 +138,14 @@ fn join_game(reg_data: Json<JoinData>, game_lock: State<RwLock<Game>>) -> Json<V
 }
 
 #[post("/game", format="application/json", data="<action>")]
-fn make_move(action: Json<PlayerMessage>, game_lock: State<RwLock<Game>>) -> Json<Value> {
-    let mut game = game_lock.write().unwrap();
+fn make_move(action: Json<PlayerMessage>, game_lock: State<RwLock<HashMap<String,Game>>>) -> Json<Value> {
+    let mut games = game_lock.write().unwrap();
+
+    if !games.deref().contains_key(&action.game_id) {
+        games.deref_mut().insert(action.game_id.clone(), Game::new(200));
+    }
+
+    let mut game = games.get_mut(&action.game_id).unwrap();
 
     if action.secret_id != game.players.get(&game.to_act).unwrap().secret_id {
         println!("DEBUG - Recieved secret ID {} does not match expected {}",action.secret_id,game.players.get(&game.to_act).unwrap().secret_id);
@@ -138,11 +170,9 @@ fn make_move(action: Json<PlayerMessage>, game_lock: State<RwLock<Game>>) -> Jso
 }
 
 fn rocket() -> rocket::Rocket {
-    // TODO:
-    // We can make this client managed several Games in a Vec... manage a Vec of RwLocked games
     rocket::ignite()
         .mount("/",routes![configure_game, join_game, make_move])
-        .manage(RwLock::new(Game::new(200))) // Default game is 100 big blinds
+        .manage(RwLock::new(HashMap::<String,Game>::new())) // Default game is 100 big blinds
 }
 
 fn main() {

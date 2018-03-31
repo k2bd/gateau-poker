@@ -100,6 +100,7 @@ pub struct Game {
     //  - Push game moves to a database
     //  - Add a timer to game moves
     //  - Get rid of reqwest client, switch to well-implemented asynch
+    //  - Restart Game
     // Possible Extensions (unnecessarily advanced)
     //  - Game consisting of multiple tables w/ appropriate table breaks
     //  - Optional ante
@@ -672,9 +673,9 @@ impl Game {
                 winning_player : winning_player,
             };
             self.send_to_all_players(&game_over_info);
+        } else {
+            self.new_hand();
         }
-
-        self.new_hand();
     }
 
     /// Sets up a new hand: shuffles a new deck, deals, etc.
@@ -816,7 +817,9 @@ impl Game {
         // We got to the end and didn't find anyone... So return the first unfolded player
         for &i in &self.seat_order {
             if i == current_player {
-                panic!("Only one unfolded player!");
+                //panic!("Only one unfolded player!");
+                // We only have one player left
+                return i;
             } else {
                 let plyr = self.players.get(&i).unwrap();
                 if !plyr.folded && !plyr.all_in && !plyr.eliminated {
@@ -849,7 +852,9 @@ impl Game {
         // We got to the end and didn't find anyone... So return the first unfolded player
         for &i in &reverse_seat {
             if i == current_player {
-                panic!("Only one unfolded player!");
+                //panic!("Only one unfolded player!");
+                // We only have one player left
+                return i;
             } else {
                 let plyr = self.players.get(&i).unwrap();
                 if !plyr.folded && !plyr.all_in && !plyr.eliminated {

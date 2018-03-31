@@ -10,8 +10,9 @@ The server attempts to correctly recreate the rules of Hold'em; any deviations n
 This is for configuring the game. 
 ```
 {
-    "config" : "property", // What game property to change
-    "value"  : 0,          // Value to change property to, if applicable
+    "game_id" : "some_id",  // ID of the game we're posting to, should be a String
+    "config"  : "property", // What game property to change
+    "value"   : 0,          // Value to change property to, if applicable
 }
 ```
 `config` can currently be any of the following:
@@ -22,6 +23,7 @@ This is for configuring the game.
 Player Registration, `POST` to join the game.
 ```
 {
+    "game_id" : "some_id",               // ID of the game we're posting to
     "name"    : "Display Name",          // The player's display name
     "address" : "http://127.0.0.1:5000", // The player's return address
 }
@@ -30,6 +32,7 @@ Player Registration, `POST` to join the game.
 Game moves are submitted here.
 ```
 {
+    "game_id"   : "some_id",                              // ID of the game we're posting to
     "secret_id" : "123e4567-e89b-12d3-a456-426655440000", // UUID that the player must use for confirmation.
     "action"    : "Fold",                                 // Bet, Call, Fold, Check, AllIn
     "value"     : 0,                                      // In the case of bet, the amount to bet, otherwise unused
@@ -164,9 +167,9 @@ A bet that's greater than your stack is an all-in.
 * Players who don't have to reveal hands during showdown should auto-muck their hands
 
 ## General To-dos
-* Add timer to moves
+* Add time limit to moves with check/fold interpreted after timeout
 * Secure configuration endpoint
-* Add a database of game info
+* Push game moves to a logging server
 * Move to asynch player pushes
 
 # License

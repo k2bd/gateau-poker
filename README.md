@@ -1,7 +1,7 @@
 # Gateau - Simple HTML Texas Hold'em Server
 
 This is a project that aims to allow poker bots and humans to compete together at Texas Hold'em. 
-Any client must be able to `POST` and recieve `POST`s from the server according to the specification below.
+Any client must be able to `POST` to and recieve `POST`s from the server according to the specification below.
 The server attempts to correctly recreate the rules of Hold'em; any deviations not listed below should be opened as an issue.
 
 ## Specification of JSON structures expected by each endpoint
